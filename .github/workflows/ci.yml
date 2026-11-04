@@ -3,33 +3,35 @@ name: PRYN CI
 on:
   push:
     branches: [main]
-
   pull_request:
     branches: [main]
 
 permissions:
   contents: read
 
+concurrency:
+  group: pryn-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   verify:
-    name: verify
+    name: verify (ubuntu-latest)
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - name: Check out source
+        uses: actions/checkout@v7
 
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Run Clippy
+      - name: Check with Clippy
         run: cargo clippy --all-targets --all-features --locked -- -D warnings
 
       - name: Run tests
         run: cargo test --all-targets --all-features --locked
 
-      - name: Release build
+      - name: Build release binary
         run: cargo build --release --locked
