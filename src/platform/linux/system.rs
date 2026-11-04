@@ -192,8 +192,10 @@ fn read_boolean(path: &Path) -> io::Result<bool> {
         "1" => Ok(true),
         other => Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("expected 0 or 1 in {path}, found {other:?}"),
-            path = path.display()
+            format!(
+                "expected 0 or 1 in {path}, found {other:?}",
+                path = path.display()
+            ),
         )),
     }
 }
