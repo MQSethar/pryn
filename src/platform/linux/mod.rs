@@ -1,3 +1,5 @@
+pub mod network_manager;
+
 use std::ffi::OsStr;
 use std::fs;
 use std::io;
@@ -37,7 +39,8 @@ impl LinuxCollector {
     }
 
     pub fn collect_wifi(&self) -> Result<WifiSnapshot, ProbeError> {
-        let entries = read_directory(&self.paths.sys_class_net, false)?.unwrap_or_default();
+        let entries = read_directory(&self.paths.sys_class_net, false)?
+            .unwrap_or_default();
         let mut interfaces = Vec::new();
         let mut warnings = Vec::new();
 
@@ -243,13 +246,12 @@ fn parse_os_release_value(contents: &str, key: &str) -> Option<String> {
     })
 }
 
-fn read_directory(
-    path: &Path,
-    missing_is_optional: bool,
-) -> Result<Option<Vec<PathBuf>>, ProbeError> {
+fn read_directory(path: &Path, missing_is_optional: bool) -> Result<Option<Vec<PathBuf>>, ProbeError> {
     let directory = match fs::read_dir(path) {
         Ok(directory) => directory,
-        Err(source) if missing_is_optional && source.kind() == io::ErrorKind::NotFound => {
+        Err(source)
+            if missing_is_optional && source.kind() == io::ErrorKind::NotFound =>
+        {
             return Ok(None);
         }
         Err(source) => return Err(ProbeError::new(path, source)),
@@ -297,7 +299,11 @@ fn read_optional_text(path: &Path, warnings: &mut Vec<String>) -> Option<String>
     match fs::read_to_string(path) {
         Ok(value) => {
             let value = value.trim().to_owned();
-            if value.is_empty() { None } else { Some(value) }
+            if value.is_empty() {
+                None
+            } else {
+                Some(value)
+            }
         }
         Err(source) if source.kind() == io::ErrorKind::NotFound => None,
         Err(source) => {
@@ -417,8 +423,10 @@ mod tests {
 
         let controller = paths.sys_class_bluetooth.join("hci0");
         fs::create_dir_all(controller.join("device")).expect("controller device directory");
-        fs::create_dir_all(paths.sys_class_sound.join("card0")).expect("audio card directory");
-        fs::write(paths.sys_class_sound.join("card0/id"), "PCH\n").expect("audio card id");
+        fs::create_dir_all(paths.sys_class_sound.join("card0"))
+            .expect("audio card directory");
+        fs::write(paths.sys_class_sound.join("card0/id"), "PCH\n")
+            .expect("audio card id");
 
         let collector = LinuxCollector::with_paths(paths);
         let bluetooth = collector
