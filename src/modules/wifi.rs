@@ -1,6 +1,5 @@
 use crate::model::{
-    DiagnosticCheck, DiagnosticStatus, Evidence, Finding, Severity, Subsystem,
-    SubsystemReport,
+    DiagnosticCheck, DiagnosticStatus, Evidence, Finding, Severity, Subsystem, SubsystemReport,
 };
 use crate::platform::linux::network_manager::{
     NetworkManagerConnectivity, NetworkManagerDeviceState, NetworkManagerSnapshot,
@@ -14,8 +13,7 @@ pub fn check(collector: &LinuxCollector) -> SubsystemReport {
     // The system-bus query is read-only and bounded by a short method timeout.
     // Collect it independently so a sysfs permission issue does not hide the
     // connection manager's view of the device.
-    let manager_probe =
-        crate::platform::linux::network_manager::collect_wifi_state();
+    let manager_probe = crate::platform::linux::network_manager::collect_wifi_state();
 
     match collector.collect_wifi() {
         Ok(snapshot) => evaluate_snapshot(snapshot, manager_probe),
@@ -23,10 +21,7 @@ pub fn check(collector: &LinuxCollector) -> SubsystemReport {
     }
 }
 
-fn report_collection_error(
-    error: ProbeError,
-    manager_probe: WifiManagerProbe,
-) -> SubsystemReport {
+fn report_collection_error(error: ProbeError, manager_probe: WifiManagerProbe) -> SubsystemReport {
     let mut checks = vec![DiagnosticCheck::new(
         "wifi.inventory.available",
         "Wi-Fi adapter inventory",
@@ -42,10 +37,7 @@ fn report_collection_error(
     SubsystemReport::new(Subsystem::Wifi, checks, findings)
 }
 
-fn evaluate_snapshot(
-    snapshot: WifiSnapshot,
-    manager_probe: WifiManagerProbe,
-) -> SubsystemReport {
+fn evaluate_snapshot(snapshot: WifiSnapshot, manager_probe: WifiManagerProbe) -> SubsystemReport {
     let mut checks = Vec::new();
     let mut findings = Vec::new();
 
@@ -108,7 +100,10 @@ fn evaluate_snapshot(
         let driver_summary = if driver_details.is_empty() {
             "No driver association was exposed for the wireless interfaces.".to_owned()
         } else {
-            format!("Driver associations observed: {}.", driver_details.join("; "))
+            format!(
+                "Driver associations observed: {}.",
+                driver_details.join("; ")
+            )
         };
         checks.push(DiagnosticCheck::new(
             "wifi.driver.association",
@@ -239,11 +234,8 @@ fn evaluate_snapshot(
         findings.push(finding);
     }
 
-    let (manager_checks, manager_findings) = evaluate_network_manager(
-        manager_probe,
-        snapshot.interfaces.len(),
-        rfkill_state,
-    );
+    let (manager_checks, manager_findings) =
+        evaluate_network_manager(manager_probe, snapshot.interfaces.len(), rfkill_state);
     checks.extend(manager_checks);
     findings.extend(manager_findings);
 
@@ -497,10 +489,7 @@ fn evaluate_wireless_enabled(
             "Wi-Fi software switch",
             DiagnosticStatus::Pass,
             "NetworkManager reports that Wi-Fi is enabled.",
-            vec![Evidence::new(
-                "NetworkManager",
-                "WirelessEnabled is true.",
-            )],
+            vec![Evidence::new("NetworkManager", "WirelessEnabled is true.")],
         )),
         Some(false) => {
             let summary = "NetworkManager reports that Wi-Fi is switched off.";
@@ -509,10 +498,7 @@ fn evaluate_wireless_enabled(
                 "Wi-Fi software switch",
                 DiagnosticStatus::Problem,
                 summary,
-                vec![Evidence::new(
-                    "NetworkManager",
-                    "WirelessEnabled is false.",
-                )],
+                vec![Evidence::new("NetworkManager", "WirelessEnabled is false.")],
             ));
             // rfkill may already have reported the same software block. Keep
             // this check as corroborating evidence, but avoid duplicate findings.
@@ -641,9 +627,7 @@ fn evaluate_networkmanager_devices(
     let managed_devices: Vec<&NetworkManagerWifiDevice> = snapshot
         .wifi_devices
         .iter()
-        .filter(|device| {
-            device.state != Some(NetworkManagerDeviceState::Unmanaged)
-        })
+        .filter(|device| device.state != Some(NetworkManagerDeviceState::Unmanaged))
         .collect();
 
     if managed_devices.is_empty() {
@@ -680,9 +664,7 @@ fn evaluate_networkmanager_devices(
     let authentication_devices: Vec<&NetworkManagerWifiDevice> = managed_devices
         .iter()
         .copied()
-        .filter(|device| {
-            device.state == Some(NetworkManagerDeviceState::NeedsAuthentication)
-        })
+        .filter(|device| device.state == Some(NetworkManagerDeviceState::NeedsAuthentication))
         .collect();
 
     let connection_is_enabled = snapshot.networking_enabled != Some(false)
@@ -773,8 +755,10 @@ fn evaluate_networkmanager_devices(
                 ),
                 device_evidence_refs(&failed_devices),
                 vec![
-                    "Check the connection details and any password or authentication prompt.".to_owned(),
-                    "Check recent NetworkManager logs for the reason the connection failed.".to_owned(),
+                    "Check the connection details and any password or authentication prompt."
+                        .to_owned(),
+                    "Check recent NetworkManager logs for the reason the connection failed."
+                        .to_owned(),
                     "Try connecting again through your desktop's network controls.".to_owned(),
                 ],
             ));
@@ -836,14 +820,15 @@ fn evaluate_networkmanager_devices(
     let plugin_missing = managed_devices
         .iter()
         .any(|device| device.plugin_missing == Some(true));
-    let dependency_values_known = managed_devices.iter().all(|device| {
-        device.firmware_missing.is_some() && device.plugin_missing.is_some()
-    });
+    let dependency_values_known = managed_devices
+        .iter()
+        .all(|device| device.firmware_missing.is_some() && device.plugin_missing.is_some());
 
     let (dependency_status, dependency_summary) = if firmware_missing || plugin_missing {
         (
             DiagnosticStatus::Warning,
-            "NetworkManager reports a possible missing firmware component or device plugin.".to_owned(),
+            "NetworkManager reports a possible missing firmware component or device plugin."
+                .to_owned(),
         )
     } else if dependency_values_known {
         (
@@ -853,7 +838,8 @@ fn evaluate_networkmanager_devices(
     } else {
         (
             DiagnosticStatus::Unknown,
-            "PRYN could not confirm whether all Wi-Fi firmware and device-plugin checks passed.".to_owned(),
+            "PRYN could not confirm whether all Wi-Fi firmware and device-plugin checks passed."
+                .to_owned(),
         )
     };
     checks.push(DiagnosticCheck::new(
@@ -873,7 +859,8 @@ fn evaluate_networkmanager_devices(
             device_evidence(&snapshot.wifi_devices),
             vec![
                 "Check the distribution's firmware packages for your wireless chipset.".to_owned(),
-                "Check whether NetworkManager has the required device support installed.".to_owned(),
+                "Check whether NetworkManager has the required device support installed."
+                    .to_owned(),
                 "Rerun `pryn check wifi` after resolving the reported dependency.".to_owned(),
             ],
         ));
@@ -1010,7 +997,9 @@ fn device_state_label(state: Option<NetworkManagerDeviceState>) -> &'static str 
         Some(NetworkManagerDeviceState::NeedsAuthentication) => "waiting for authentication",
         Some(NetworkManagerDeviceState::IpConfiguration) => "obtaining network settings",
         Some(NetworkManagerDeviceState::IpCheck) => "checking network connection",
-        Some(NetworkManagerDeviceState::WaitingForSecondary) => "waiting for a secondary connection",
+        Some(NetworkManagerDeviceState::WaitingForSecondary) => {
+            "waiting for a secondary connection"
+        }
         Some(NetworkManagerDeviceState::Activated) => "connected to a network",
         Some(NetworkManagerDeviceState::Deactivating) => "disconnecting",
         Some(NetworkManagerDeviceState::Failed) => "connection failed",
@@ -1072,7 +1061,7 @@ fn ip_configuration_not_implemented() -> DiagnosticCheck {
 
 #[cfg(test)]
 mod tests {
-    use super::{evaluate_snapshot, evaluate_network_manager};
+    use super::{evaluate_network_manager, evaluate_snapshot};
     use crate::model::{DiagnosticStatus, Subsystem};
     use crate::platform::linux::network_manager::{
         NetworkManagerConnectivity, NetworkManagerDeviceState, NetworkManagerSnapshot,
@@ -1119,7 +1108,8 @@ mod tests {
 
     #[test]
     fn wireless_link_does_not_claim_internet_connectivity() {
-        let report = evaluate_snapshot(sample_snapshot(Some(true), false), active_network_manager());
+        let report =
+            evaluate_snapshot(sample_snapshot(Some(true), false), active_network_manager());
         assert_eq!(report.subsystem, Subsystem::Wifi);
         assert!(report.checks.iter().any(|check| {
             check.id == "wifi.interface.carrier" && check.status == DiagnosticStatus::Pass
@@ -1140,10 +1130,20 @@ mod tests {
 
     #[test]
     fn blocked_radio_produces_a_problem_finding() {
-        let report = evaluate_snapshot(sample_snapshot(Some(false), true), active_network_manager());
-        assert!(report.findings.iter().any(|finding| finding.code == "WIFI-001"));
+        let report =
+            evaluate_snapshot(sample_snapshot(Some(false), true), active_network_manager());
+        assert!(
+            report
+                .findings
+                .iter()
+                .any(|finding| finding.code == "WIFI-001")
+        );
         assert_eq!(
-            report.checks.iter().find(|check| check.id == "wifi.radio.block_state").map(|check| check.status),
+            report
+                .checks
+                .iter()
+                .find(|check| check.id == "wifi.radio.block_state")
+                .map(|check| check.status),
             Some(DiagnosticStatus::Problem)
         );
     }
@@ -1159,7 +1159,11 @@ mod tests {
             WifiManagerProbe::NoKnownManager,
         );
         assert_eq!(
-            report.checks.iter().find(|check| check.id == "wifi.hardware.detected").map(|check| check.status),
+            report
+                .checks
+                .iter()
+                .find(|check| check.id == "wifi.hardware.detected")
+                .map(|check| check.status),
             Some(DiagnosticStatus::Unknown)
         );
     }
@@ -1185,7 +1189,10 @@ mod tests {
 
         let (checks, findings) = evaluate_network_manager(probe, 1, WifiRfkillState::default());
         assert_eq!(
-            checks.iter().find(|check| check.id == "wifi.connection.state").map(|check| check.status),
+            checks
+                .iter()
+                .find(|check| check.id == "wifi.connection.state")
+                .map(|check| check.status),
             Some(DiagnosticStatus::Warning)
         );
         assert!(findings.iter().any(|finding| finding.code == "WIFI-009"));
@@ -1221,7 +1228,10 @@ mod tests {
 
         let (checks, findings) = evaluate_network_manager(probe, 2, WifiRfkillState::default());
         assert_eq!(
-            checks.iter().find(|check| check.id == "wifi.connection.state").map(|check| check.status),
+            checks
+                .iter()
+                .find(|check| check.id == "wifi.connection.state")
+                .map(|check| check.status),
             Some(DiagnosticStatus::Pass)
         );
         assert!(!findings.iter().any(|finding| finding.code == "WIFI-009"));
@@ -1248,7 +1258,10 @@ mod tests {
 
         let (checks, findings) = evaluate_network_manager(probe, 1, WifiRfkillState::default());
         assert_eq!(
-            checks.iter().find(|check| check.id == "wifi.radio.software_state").map(|check| check.status),
+            checks
+                .iter()
+                .find(|check| check.id == "wifi.radio.software_state")
+                .map(|check| check.status),
             Some(DiagnosticStatus::Problem)
         );
         assert!(findings.iter().any(|finding| finding.code == "WIFI-004"));
@@ -1275,7 +1288,10 @@ mod tests {
 
         let (checks, findings) = evaluate_network_manager(probe, 1, WifiRfkillState::default());
         assert_eq!(
-            checks.iter().find(|check| check.id == "wifi.connection.state").map(|check| check.status),
+            checks
+                .iter()
+                .find(|check| check.id == "wifi.connection.state")
+                .map(|check| check.status),
             Some(DiagnosticStatus::Problem)
         );
         assert!(findings.iter().any(|finding| finding.code == "WIFI-006"));
@@ -1302,7 +1318,10 @@ mod tests {
 
         let (checks, findings) = evaluate_network_manager(probe, 1, WifiRfkillState::default());
         assert_eq!(
-            checks.iter().find(|check| check.id == "wifi.connection.state").map(|check| check.status),
+            checks
+                .iter()
+                .find(|check| check.id == "wifi.connection.state")
+                .map(|check| check.status),
             Some(DiagnosticStatus::NotApplicable)
         );
         assert!(findings.is_empty());
@@ -1441,14 +1460,14 @@ mod tests {
             warnings: Vec::new(),
         });
 
-        let (checks, findings) = super::evaluate_network_manager(
-            probe,
-            1,
-            super::WifiRfkillState::default(),
-        );
+        let (checks, findings) =
+            super::evaluate_network_manager(probe, 1, super::WifiRfkillState::default());
 
         assert_eq!(
-            checks.iter().find(|check| check.id == "wifi.connection.state").map(|check| check.status),
+            checks
+                .iter()
+                .find(|check| check.id == "wifi.connection.state")
+                .map(|check| check.status),
             Some(DiagnosticStatus::NotApplicable)
         );
         assert!(findings.iter().any(|finding| finding.code == "WIFI-004"));
@@ -1486,9 +1505,13 @@ mod tests {
 
     #[test]
     fn iwd_is_detected_but_not_claimed_as_supported_yet() {
-        let (checks, _) = evaluate_network_manager(WifiManagerProbe::IwdDetected, 1, WifiRfkillState::default());
+        let (checks, _) =
+            evaluate_network_manager(WifiManagerProbe::IwdDetected, 1, WifiRfkillState::default());
         assert_eq!(
-            checks.iter().find(|check| check.id == "wifi.connection_service.available").map(|check| check.status),
+            checks
+                .iter()
+                .find(|check| check.id == "wifi.connection_service.available")
+                .map(|check| check.status),
             Some(DiagnosticStatus::NotImplemented)
         );
     }

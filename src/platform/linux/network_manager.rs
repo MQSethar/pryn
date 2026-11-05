@@ -6,7 +6,7 @@
 
 use std::time::Duration;
 
-use zbus::blocking::{connection::Builder as ConnectionBuilder, Proxy};
+use zbus::blocking::{Proxy, connection::Builder as ConnectionBuilder};
 use zbus::zvariant::OwnedObjectPath;
 
 const DBUS_SERVICE: &str = "org.freedesktop.DBus";
@@ -145,12 +145,7 @@ pub fn collect_wifi_state() -> WifiManagerProbe {
         }
     };
 
-    let bus_proxy = match Proxy::new(
-        &connection,
-        DBUS_SERVICE,
-        DBUS_PATH,
-        DBUS_INTERFACE,
-    ) {
+    let bus_proxy = match Proxy::new(&connection, DBUS_SERVICE, DBUS_PATH, DBUS_INTERFACE) {
         Ok(proxy) => proxy,
         Err(error) => {
             tracing::debug!(error = %error, "could not create the D-Bus bus proxy");
@@ -184,9 +179,7 @@ fn name_has_owner(proxy: &Proxy<'_>, service_name: &str) -> Result<bool, zbus::E
     proxy.call("NameHasOwner", &(service_name,))
 }
 
-fn collect_network_manager_snapshot(
-    connection: &zbus::blocking::Connection,
-) -> WifiManagerProbe {
+fn collect_network_manager_snapshot(connection: &zbus::blocking::Connection) -> WifiManagerProbe {
     let manager_proxy = match Proxy::new(
         connection,
         NETWORK_MANAGER_SERVICE,
@@ -201,16 +194,10 @@ fn collect_network_manager_snapshot(
     };
 
     let mut snapshot = NetworkManagerSnapshot::default();
-    snapshot.networking_enabled = read_bool_property(
-        &manager_proxy,
-        "NetworkingEnabled",
-        &mut snapshot.warnings,
-    );
-    snapshot.wireless_enabled = read_bool_property(
-        &manager_proxy,
-        "WirelessEnabled",
-        &mut snapshot.warnings,
-    );
+    snapshot.networking_enabled =
+        read_bool_property(&manager_proxy, "NetworkingEnabled", &mut snapshot.warnings);
+    snapshot.wireless_enabled =
+        read_bool_property(&manager_proxy, "WirelessEnabled", &mut snapshot.warnings);
     snapshot.wireless_hardware_enabled = read_bool_property(
         &manager_proxy,
         "WirelessHardwareEnabled",
@@ -226,12 +213,9 @@ fn collect_network_manager_snapshot(
         "ConnectivityCheckAvailable",
         &mut snapshot.warnings,
     );
-    snapshot.connectivity = read_u32_property(
-        &manager_proxy,
-        "Connectivity",
-        &mut snapshot.warnings,
-    )
-    .map(NetworkManagerConnectivity::from);
+    snapshot.connectivity =
+        read_u32_property(&manager_proxy, "Connectivity", &mut snapshot.warnings)
+            .map(NetworkManagerConnectivity::from);
 
     let device_paths: Vec<OwnedObjectPath> = match manager_proxy.call("GetDevices", &()) {
         Ok(paths) => {
@@ -282,23 +266,13 @@ fn collect_network_manager_snapshot(
         // Read properties into locals before mutating the snapshot. This keeps
         // the mutable warning collection disjoint from the device vector and
         // makes the borrow relationships explicit.
-        let interface = read_string_property(
-            &device_proxy,
-            "Interface",
-            &mut snapshot.warnings,
-        );
+        let interface = read_string_property(&device_proxy, "Interface", &mut snapshot.warnings);
         let state = read_u32_property(&device_proxy, "State", &mut snapshot.warnings)
             .map(NetworkManagerDeviceState::from);
-        let firmware_missing = read_bool_property(
-            &device_proxy,
-            "FirmwareMissing",
-            &mut snapshot.warnings,
-        );
-        let plugin_missing = read_bool_property(
-            &device_proxy,
-            "NmPluginMissing",
-            &mut snapshot.warnings,
-        );
+        let firmware_missing =
+            read_bool_property(&device_proxy, "FirmwareMissing", &mut snapshot.warnings);
+        let plugin_missing =
+            read_bool_property(&device_proxy, "NmPluginMissing", &mut snapshot.warnings);
 
         snapshot.wifi_devices.push(NetworkManagerWifiDevice {
             interface,
@@ -320,7 +294,9 @@ fn read_bool_property(
         Ok(value) => Some(value),
         Err(error) => {
             tracing::debug!(property, error = %error, "NetworkManager boolean property unavailable");
-            warnings.push(format!("NetworkManager property `{property}` could not be read."));
+            warnings.push(format!(
+                "NetworkManager property `{property}` could not be read."
+            ));
             None
         }
     }
@@ -336,22 +312,22 @@ fn read_string_property(
         Ok(_) => None,
         Err(error) => {
             tracing::debug!(property, error = %error, "NetworkManager string property unavailable");
-            warnings.push(format!("NetworkManager property `{property}` could not be read."));
+            warnings.push(format!(
+                "NetworkManager property `{property}` could not be read."
+            ));
             None
         }
     }
 }
 
-fn read_u32_property(
-    proxy: &Proxy<'_>,
-    property: &str,
-    warnings: &mut Vec<String>,
-) -> Option<u32> {
+fn read_u32_property(proxy: &Proxy<'_>, property: &str, warnings: &mut Vec<String>) -> Option<u32> {
     match proxy.get_property::<u32>(property) {
         Ok(value) => Some(value),
         Err(error) => {
             tracing::debug!(property, error = %error, "NetworkManager integer property unavailable");
-            warnings.push(format!("NetworkManager property `{property}` could not be read."));
+            warnings.push(format!(
+                "NetworkManager property `{property}` could not be read."
+            ));
             None
         }
     }
