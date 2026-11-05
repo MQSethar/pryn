@@ -2,6 +2,8 @@
 name = "pryn"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.99"
+description = "Linux system checks for Wi-Fi, Bluetooth, and audio"
 
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }
@@ -15,3 +17,19 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 assert_cmd = "2.2.2"
 predicates = "3.1.4"
 tempfile = "3.27.0"
+
+[profile.dev]
+debug = 1
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+
+[lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+
+[lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
