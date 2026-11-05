@@ -3,7 +3,6 @@ name: PRYN CI
 on:
   push:
     branches: [main]
-
   pull_request:
     branches: [main]
 
@@ -15,9 +14,8 @@ env:
 
 jobs:
   verify:
-    name: verify
+    name: verify (Ubuntu)
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -31,5 +29,5 @@ jobs:
       - name: Run tests
         run: cargo test --all-targets --all-features --locked
 
-      - name: Release build
+      - name: Build release binary
         run: cargo build --release --locked
