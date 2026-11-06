@@ -1061,7 +1061,7 @@ fn ip_configuration_not_implemented() -> DiagnosticCheck {
 
 #[cfg(test)]
 mod tests {
-    use super::{evaluate_network_manager, evaluate_snapshot};
+    use super::{WifiRfkillState, evaluate_network_manager, evaluate_snapshot};
     use crate::model::{DiagnosticStatus, Subsystem};
     use crate::platform::linux::network_manager::{
         NetworkManagerConnectivity, NetworkManagerDeviceState, NetworkManagerSnapshot,
