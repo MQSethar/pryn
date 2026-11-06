@@ -1123,8 +1123,12 @@ mod tests {
         assert!(report.checks.iter().any(|check| {
             check.id == "wifi.ip_configuration" && check.status == DiagnosticStatus::NotImplemented
         }));
-        assert!(!report.checks.iter().any(|check| {
-            check.id == "wifi.connection.state" && check.summary.to_lowercase().contains("internet")
+        assert!(report.checks.iter().any(|check| {
+            check.id == "wifi.connection.state"
+                && check
+                    .summary
+                    .to_lowercase()
+                    .contains("not internet reachability")
         }));
     }
 
@@ -1368,7 +1372,11 @@ mod tests {
         super::evaluate_connectivity(&snapshot, &mut checks, &mut findings);
 
         assert_eq!(checks[0].status, DiagnosticStatus::Unknown);
-        assert!(checks[0].summary.contains("not currently available"));
+        assert!(
+            checks[0]
+                .summary
+                .contains("does not report a configured connectivity-check service")
+        );
         assert!(findings.is_empty());
     }
 

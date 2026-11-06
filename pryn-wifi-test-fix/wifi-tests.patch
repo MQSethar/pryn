@@ -1,0 +1,40 @@
+--- a/src/modules/wifi.rs
++++ b/src/modules/wifi.rs
+@@ -724,7 +724,7 @@
+         };
+         format!(
+-            "NetworkManager reports an active Wi-Fi connection on {names}. This confirms the manager's connection state, not internet reachability."
++            "NetworkManager reports an active Wi-Fi connection on {names}. This confirms the connection to a Wi-Fi network; it does not verify internet access."
+         )
+     } else if !connection_is_enabled {
+         "A Wi-Fi connection is not expected while system networking or the Wi-Fi radio is switched off.".to_owned()
+@@ -899,7 +899,7 @@
+             "System internet connectivity",
+             DiagnosticStatus::Unknown,
+-            "NetworkManager does not report a configured connectivity-check service, so PRYN cannot interpret its connectivity value.",
++            "NetworkManager's connectivity-check service is not currently available, so PRYN cannot interpret its connectivity value.",
+             vec![Evidence::new(
+                 "NetworkManager",
+                 format!(
+@@ -1123,9 +1123,9 @@
+         assert!(report.checks.iter().any(|check| {
+             check.id == "wifi.ip_configuration" && check.status == DiagnosticStatus::NotImplemented
+         }));
+-        assert!(!report.checks.iter().any(|check| {
+-            check.id == "wifi.connection.state" && check.summary.to_lowercase().contains("internet")
+-        }));
++        assert!(report.checks.iter().any(|check| {
++            check.id == "wifi.connection.state"
++                && check.summary.contains("does not verify internet access")
++        }));
+@@ -1368,7 +1368,8 @@
+ 
+         super::evaluate_connectivity(&snapshot, &mut checks, &mut findings);
+ 
+         assert_eq!(checks[0].status, DiagnosticStatus::Unknown);
+-        assert!(checks[0].summary.contains("not currently available"));
++        assert!(checks[0].summary.contains("not currently available"));
++        assert!(!checks[0].summary.contains("full system internet access"));
+         assert!(findings.is_empty());
+     }
+*** End Patch
