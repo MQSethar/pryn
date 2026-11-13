@@ -15,7 +15,7 @@ Diagnostic rules must not read `/sys`, `/proc`, invoke commands, or call D-Bus d
 
 ## Current collection surface
 
-- Wi-Fi: `/sys/class/net`, wireless interface markers, `operstate`, `carrier`, driver symlinks, and best-effort `/sys/class/rfkill` attributes. NetworkManager state is collected separately over the system D-Bus through `platform/linux/network_manager.rs`. PRYN reads global networking/radio switches, Wi-Fi device state, firmware/plugin signals, and the existing connectivity-check state when NetworkManager reports that its connectivity-check service is configured and enabled.
+- Wi-Fi: `/sys/class/net`, wireless interface markers, `operstate`, `carrier`, driver symlinks, and best-effort `/sys/class/rfkill` attributes. NetworkManager state is collected separately over the system D-Bus through `platform/linux/network_manager.rs`. PRYN reads global networking/radio switches, Wi-Fi device state, firmware/plugin signals, and the existing connectivity-check state when NetworkManager reports that its connectivity-check service is configured and enabled. `platform/linux/network_config.rs` optionally invokes `ip -j` directly (no shell, two-second timeout, 2 MiB output cap) to inspect addresses on discovered Wi-Fi interfaces and system default routes; it reads configured DNS nameservers from `/etc/resolv.conf`.
 - Bluetooth: `/sys/class/bluetooth` controller entries, driver symlinks, and best-effort `/sys/class/rfkill` attributes. `platform/linux/bluez.rs` checks for `org.bluez` on the system D-Bus and reads one ObjectManager snapshot of `Adapter1` and `Device1` properties. It does not initiate discovery or mutate adapter/device properties; explicit Bluetooth `Address` values and D-Bus object paths are not retained in `BluezSnapshot`. Bluetooth card and endpoint labels are sanitized before report rendering.
 - Audio hardware: `/sys/class/sound` ALSA card entries and driver symlinks.
 - Audio server compatibility provider: `platform/linux/audio_server.rs` uses the PulseAudio client protocol directly over the current user's Unix socket. It supports native PulseAudio and PipeWire's `pipewire-pulse` compatibility service. It returns owned snapshots of server identity, defaults, sinks, sources, volume/mute state, sample formats, ports, and card profiles.
@@ -38,6 +38,7 @@ The PulseAudio protocol handshake and inspection are blocking and bounded by Uni
 - A non-monitor capture source is not necessarily a physical microphone; virtual capture sources exist.
 - PipeWire graph-node existence does not prove that the device is physically connected or that audio is audible/recordable.
 - Missing interfaces and unavailable attributes produce `unknown`, never a fabricated success.
+- IP address and default-route inspection depends on the optional iproute2 `ip` executable. Resolver configuration is read-only and does not prove DNS server reachability.
 - Unsupported checks are explicitly marked `not_implemented`; subsystem status becomes `partial` when supported checks otherwise complete.
 
 ## Expansion rules

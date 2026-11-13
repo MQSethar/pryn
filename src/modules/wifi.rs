@@ -1,11 +1,14 @@
 use crate::model::{
     DiagnosticCheck, DiagnosticStatus, Evidence, Finding, Severity, Subsystem, SubsystemReport,
 };
+use crate::platform::linux::network_config::{self, NetworkConfigSnapshot};
 use crate::platform::linux::network_manager::{
     NetworkManagerConnectivity, NetworkManagerDeviceState, NetworkManagerSnapshot,
     NetworkManagerWifiDevice, WifiManagerProbe,
 };
-use crate::platform::linux::{LinuxCollector, ProbeError, RfkillDevice, WifiSnapshot};
+use crate::platform::linux::{
+    LinuxCollector, ProbeError, RfkillDevice, WifiInterface, WifiSnapshot,
+};
 
 use super::rfkill::evaluate_radio_block;
 
@@ -29,15 +32,30 @@ fn report_collection_error(error: ProbeError, manager_probe: WifiManagerProbe) -
         "PRYN could not read the kernel network-interface inventory.",
         vec![Evidence::new("Linux system files", error.to_string())],
     )];
-    let (manager_checks, findings) =
+    let (manager_checks, mut findings) =
         evaluate_network_manager(manager_probe, 0, WifiRfkillState::default());
     checks.extend(manager_checks);
-    checks.push(ip_configuration_not_implemented());
+    let network_config = network_config::collect(&[]);
+    append_network_config_diagnostics(&network_config, &[], false, &mut checks, &mut findings);
 
     SubsystemReport::new(Subsystem::Wifi, checks, findings)
 }
 
 fn evaluate_snapshot(snapshot: WifiSnapshot, manager_probe: WifiManagerProbe) -> SubsystemReport {
+    let wifi_names = snapshot
+        .interfaces
+        .iter()
+        .map(|interface| interface.name.clone())
+        .collect::<Vec<_>>();
+    let network_config = network_config::collect(&wifi_names);
+    evaluate_snapshot_with_network_config(snapshot, manager_probe, network_config)
+}
+
+fn evaluate_snapshot_with_network_config(
+    snapshot: WifiSnapshot,
+    manager_probe: WifiManagerProbe,
+    network_config: NetworkConfigSnapshot,
+) -> SubsystemReport {
     let mut checks = Vec::new();
     let mut findings = Vec::new();
 
@@ -239,7 +257,13 @@ fn evaluate_snapshot(snapshot: WifiSnapshot, manager_probe: WifiManagerProbe) ->
     checks.extend(manager_checks);
     findings.extend(manager_findings);
 
-    checks.push(ip_configuration_not_implemented());
+    append_network_config_diagnostics(
+        &network_config,
+        &snapshot.interfaces,
+        true,
+        &mut checks,
+        &mut findings,
+    );
 
     if !snapshot.warnings.is_empty() {
         checks.push(DiagnosticCheck::new(
@@ -1049,25 +1073,282 @@ fn device_evidence_refs(devices: &[&NetworkManagerWifiDevice]) -> Vec<Evidence> 
         .collect()
 }
 
-fn ip_configuration_not_implemented() -> DiagnosticCheck {
-    DiagnosticCheck::new(
-        "wifi.ip_configuration",
-        "Network settings",
-        DiagnosticStatus::NotImplemented,
-        "PRYN does not yet inspect IP addresses, routes, DNS, or internet reachability.",
-        Vec::new(),
-    )
+fn append_network_config_diagnostics(
+    snapshot: &NetworkConfigSnapshot,
+    interfaces: &[WifiInterface],
+    wifi_inventory_known: bool,
+    checks: &mut Vec<DiagnosticCheck>,
+    findings: &mut Vec<Finding>,
+) {
+    let wifi_link_up = interfaces.iter().any(|interface| match interface.carrier {
+        Some(carrier) => carrier,
+        None => interface.operstate.as_deref() == Some("up"),
+    });
+
+    let address_evidence = snapshot
+        .addresses
+        .iter()
+        .map(|address| {
+            Evidence::new(
+                "iproute2",
+                format!(
+                    "{}: {}{} ({})",
+                    address.interface,
+                    address.address,
+                    address
+                        .prefix_length
+                        .map(|prefix| format!("/{prefix}"))
+                        .unwrap_or_default(),
+                    address.family
+                ),
+            )
+        })
+        .collect::<Vec<_>>();
+    let (address_status, address_summary) = if !wifi_inventory_known {
+        (
+            DiagnosticStatus::Unknown,
+            "PRYN could not attribute IP addresses to Wi-Fi because the kernel interface inventory is unavailable.".to_owned(),
+        )
+    } else if !snapshot.address_query_succeeded {
+        (
+            DiagnosticStatus::Unknown,
+            "PRYN could not inspect IP addresses. Install iproute2 or review the collection warning.".to_owned(),
+        )
+    } else if !snapshot.addresses.is_empty() {
+        (
+            DiagnosticStatus::Pass,
+            format!(
+                "Found {} global IP address(es) on the discovered Wi-Fi interface(s).",
+                snapshot.addresses.len()
+            ),
+        )
+    } else if interfaces.is_empty() {
+        (
+            DiagnosticStatus::NotApplicable,
+            "No Wi-Fi interface was available to inspect for an assigned IP address.".to_owned(),
+        )
+    } else if !wifi_link_up {
+        (
+            DiagnosticStatus::NotApplicable,
+            "No active Wi-Fi link was observed; an IP address is not expected while the adapter is disconnected.".to_owned(),
+        )
+    } else {
+        (
+            DiagnosticStatus::Warning,
+            "The Wi-Fi interface is up, but no global IPv4 or IPv6 address was found on it."
+                .to_owned(),
+        )
+    };
+    checks.push(DiagnosticCheck::new(
+        "wifi.ip.address",
+        "Wi-Fi IP address",
+        address_status,
+        address_summary.clone(),
+        address_evidence.clone(),
+    ));
+    if address_status == DiagnosticStatus::Warning {
+        findings.push(Finding::new(
+            "WIFI-011",
+            Severity::Medium,
+            "Wi-Fi has no global IP address",
+            address_summary,
+            address_evidence,
+            vec![
+                "Check whether the network requires a sign-in or whether DHCP is available."
+                    .to_owned(),
+                "Reconnect to the Wi-Fi network and run `pryn check wifi --verbose` again."
+                    .to_owned(),
+            ],
+        ));
+    }
+
+    let wifi_routes = snapshot
+        .default_routes
+        .iter()
+        .filter(|route| {
+            route.interface.as_deref().is_some_and(|name| {
+                interfaces
+                    .iter()
+                    .any(|interface| interface.name.as_str() == name)
+            })
+        })
+        .collect::<Vec<_>>();
+    let route_evidence = snapshot
+        .default_routes
+        .iter()
+        .map(|route| {
+            Evidence::new(
+                "iproute2",
+                format!(
+                    "{} default route via {} on {}{}",
+                    route.family,
+                    route.gateway.as_deref().unwrap_or("unspecified gateway"),
+                    route.interface.as_deref().unwrap_or("unknown interface"),
+                    route
+                        .metric
+                        .map(|metric| format!(" (metric {metric})"))
+                        .unwrap_or_default()
+                ),
+            )
+        })
+        .collect::<Vec<_>>();
+    let (route_status, route_summary) = if !wifi_routes.is_empty() {
+        (
+            DiagnosticStatus::Pass,
+            format!(
+                "A system default route is configured through Wi-Fi interface(s): {}.",
+                wifi_routes
+                    .iter()
+                    .filter_map(|route| route.interface.as_deref())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        )
+    } else if !wifi_inventory_known || !snapshot.route_query_succeeded {
+        (
+            DiagnosticStatus::Unknown,
+            "PRYN could not reliably attribute a system default route to Wi-Fi.".to_owned(),
+        )
+    } else if !snapshot.default_routes.is_empty() {
+        (
+            DiagnosticStatus::NotApplicable,
+            "A system default route exists, but it uses another network interface; PRYN does not classify that as a Wi-Fi routing failure.".to_owned(),
+        )
+    } else if wifi_link_up {
+        (
+            DiagnosticStatus::Warning,
+            "The Wi-Fi link is up, but the system has no IPv4 or IPv6 default route.".to_owned(),
+        )
+    } else {
+        (
+            DiagnosticStatus::NotApplicable,
+            "No active Wi-Fi link was observed, so a Wi-Fi default route is not expected."
+                .to_owned(),
+        )
+    };
+    checks.push(DiagnosticCheck::new(
+        "network.default_route",
+        "System default route",
+        route_status,
+        route_summary.clone(),
+        route_evidence.clone(),
+    ));
+    if route_status == DiagnosticStatus::Warning {
+        findings.push(Finding::new(
+            "NET-004",
+            Severity::Medium,
+            "No system default route is configured",
+            route_summary,
+            route_evidence,
+            vec![
+                "Check the router's DHCP configuration and the active network connection."
+                    .to_owned(),
+                "Inspect `ip route show default` and `ip -6 route show default` for more detail."
+                    .to_owned(),
+            ],
+        ));
+    }
+
+    let dns_evidence = snapshot
+        .dns_servers
+        .iter()
+        .map(|server| {
+            Evidence::new(
+                "/etc/resolv.conf",
+                format!("Configured DNS server: {server}"),
+            )
+        })
+        .collect::<Vec<_>>();
+    let (dns_status, dns_summary) = if !snapshot.dns_config_read {
+        (
+            DiagnosticStatus::Unknown,
+            "PRYN could not read the system DNS resolver configuration.".to_owned(),
+        )
+    } else if !snapshot.dns_servers.is_empty() {
+        (
+            DiagnosticStatus::Pass,
+            format!(
+                "Found {} configured DNS resolver(s) in /etc/resolv.conf. This confirms configuration, not resolver reachability.",
+                snapshot.dns_servers.len()
+            ),
+        )
+    } else if wifi_inventory_known && wifi_link_up {
+        (
+            DiagnosticStatus::Warning,
+            "No nameserver entry was found in /etc/resolv.conf while the Wi-Fi link is up."
+                .to_owned(),
+        )
+    } else if !wifi_inventory_known {
+        (
+            DiagnosticStatus::Unknown,
+            "DNS configuration was read, but PRYN could not determine whether a Wi-Fi link is active.".to_owned(),
+        )
+    } else {
+        (
+            DiagnosticStatus::NotApplicable,
+            "No active Wi-Fi link was observed and no DNS nameserver is currently configured."
+                .to_owned(),
+        )
+    };
+    checks.push(DiagnosticCheck::new(
+        "network.dns.configuration",
+        "DNS configuration",
+        dns_status,
+        dns_summary.clone(),
+        dns_evidence.clone(),
+    ));
+    if dns_status == DiagnosticStatus::Warning {
+        findings.push(Finding::new(
+            "NET-003",
+            Severity::Medium,
+            "No DNS resolver is configured",
+            dns_summary,
+            dns_evidence,
+            vec![
+                "Check NetworkManager's connection settings and the system resolver configuration.".to_owned(),
+                "If the system uses systemd-resolved, verify that its per-link DNS settings are active.".to_owned(),
+            ],
+        ));
+    }
+
+    if !snapshot.warnings.is_empty() {
+        checks.push(DiagnosticCheck::new(
+            "network.configuration.completeness",
+            "Network configuration completeness",
+            DiagnosticStatus::Unknown,
+            format!("{} network configuration detail(s) could not be inspected; these unavailable details are not treated as confirmed network faults.", snapshot.warnings.len()),
+            snapshot
+                .warnings
+                .iter()
+                .map(|warning| Evidence::new("Linux network configuration", warning.clone()))
+                .collect(),
+        ));
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{WifiRfkillState, evaluate_network_manager, evaluate_snapshot};
+    #![allow(clippy::expect_used, clippy::unwrap_used)]
+
+    use super::{WifiRfkillState, evaluate_network_manager, evaluate_snapshot_with_network_config};
     use crate::model::{DiagnosticStatus, Subsystem};
+    use crate::platform::linux::network_config::NetworkConfigSnapshot;
     use crate::platform::linux::network_manager::{
         NetworkManagerConnectivity, NetworkManagerDeviceState, NetworkManagerSnapshot,
         NetworkManagerWifiDevice, WifiManagerProbe,
     };
     use crate::platform::linux::{RfkillDevice, WifiInterface, WifiSnapshot};
+
+    fn evaluate_test_snapshot(
+        snapshot: WifiSnapshot,
+        manager_probe: WifiManagerProbe,
+    ) -> super::SubsystemReport {
+        evaluate_snapshot_with_network_config(
+            snapshot,
+            manager_probe,
+            NetworkConfigSnapshot::default(),
+        )
+    }
 
     fn sample_snapshot(carrier: Option<bool>, blocked: bool) -> WifiSnapshot {
         WifiSnapshot {
@@ -1109,7 +1390,7 @@ mod tests {
     #[test]
     fn wireless_link_does_not_claim_internet_connectivity() {
         let report =
-            evaluate_snapshot(sample_snapshot(Some(true), false), active_network_manager());
+            evaluate_test_snapshot(sample_snapshot(Some(true), false), active_network_manager());
         assert_eq!(report.subsystem, Subsystem::Wifi);
         assert!(report.checks.iter().any(|check| {
             check.id == "wifi.interface.carrier" && check.status == DiagnosticStatus::Pass
@@ -1121,7 +1402,7 @@ mod tests {
             check.id == "network.internet_connectivity" && check.status == DiagnosticStatus::Pass
         }));
         assert!(report.checks.iter().any(|check| {
-            check.id == "wifi.ip_configuration" && check.status == DiagnosticStatus::NotImplemented
+            check.id == "wifi.ip.address" && check.status == DiagnosticStatus::Unknown
         }));
         assert!(report.checks.iter().any(|check| {
             check.id == "wifi.connection.state"
@@ -1135,7 +1416,7 @@ mod tests {
     #[test]
     fn blocked_radio_produces_a_problem_finding() {
         let report =
-            evaluate_snapshot(sample_snapshot(Some(false), true), active_network_manager());
+            evaluate_test_snapshot(sample_snapshot(Some(false), true), active_network_manager());
         assert!(
             report
                 .findings
@@ -1154,7 +1435,7 @@ mod tests {
 
     #[test]
     fn no_wireless_interfaces_remains_unknown() {
-        let report = evaluate_snapshot(
+        let report = evaluate_test_snapshot(
             WifiSnapshot {
                 interfaces: Vec::new(),
                 rfkill_devices: None,
@@ -1509,6 +1790,181 @@ mod tests {
 
         assert!(!findings.iter().any(|finding| finding.code == "WIFI-004"));
         assert!(!findings.iter().any(|finding| finding.code == "WIFI-007"));
+    }
+
+    #[test]
+    fn wifi_network_configuration_passes_with_address_route_and_dns() {
+        use super::append_network_config_diagnostics;
+        use crate::platform::linux::network_config::{
+            NetworkAddress, NetworkConfigSnapshot, NetworkRoute,
+        };
+
+        let snapshot = NetworkConfigSnapshot {
+            address_query_succeeded: true,
+            route_query_succeeded: true,
+            dns_config_read: true,
+            addresses: vec![NetworkAddress {
+                interface: "wlp2s0".to_owned(),
+                family: "IPv4".to_owned(),
+                address: "192.0.2.10".to_owned(),
+                prefix_length: Some(24),
+            }],
+            default_routes: vec![NetworkRoute {
+                family: "IPv4".to_owned(),
+                interface: Some("wlp2s0".to_owned()),
+                gateway: Some("192.0.2.1".to_owned()),
+                metric: Some(600),
+            }],
+            dns_servers: vec!["1.1.1.1".to_owned()],
+            warnings: Vec::new(),
+        };
+        let interfaces = vec![WifiInterface {
+            name: "wlp2s0".to_owned(),
+            operstate: Some("up".to_owned()),
+            carrier: Some(true),
+            driver: Some("iwlwifi".to_owned()),
+        }];
+        let mut checks = Vec::new();
+        let mut findings = Vec::new();
+
+        append_network_config_diagnostics(&snapshot, &interfaces, true, &mut checks, &mut findings);
+
+        assert!(checks.iter().any(|check| {
+            check.id == "wifi.ip.address" && check.status == DiagnosticStatus::Pass
+        }));
+        assert!(checks.iter().any(|check| {
+            check.id == "network.default_route" && check.status == DiagnosticStatus::Pass
+        }));
+        assert!(checks.iter().any(|check| {
+            check.id == "network.dns.configuration" && check.status == DiagnosticStatus::Pass
+        }));
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn missing_address_route_and_dns_on_a_live_wifi_link_create_findings() {
+        use super::append_network_config_diagnostics;
+        use crate::platform::linux::network_config::NetworkConfigSnapshot;
+
+        let snapshot = NetworkConfigSnapshot {
+            address_query_succeeded: true,
+            route_query_succeeded: true,
+            dns_config_read: true,
+            ..NetworkConfigSnapshot::default()
+        };
+        let interfaces = vec![WifiInterface {
+            name: "wlp2s0".to_owned(),
+            operstate: Some("up".to_owned()),
+            carrier: Some(true),
+            driver: Some("iwlwifi".to_owned()),
+        }];
+        let mut checks = Vec::new();
+        let mut findings = Vec::new();
+
+        append_network_config_diagnostics(&snapshot, &interfaces, true, &mut checks, &mut findings);
+
+        assert!(findings.iter().any(|finding| finding.code == "WIFI-011"));
+        assert!(findings.iter().any(|finding| finding.code == "NET-004"));
+        assert!(findings.iter().any(|finding| finding.code == "NET-003"));
+    }
+
+    #[test]
+    fn default_route_through_another_interface_is_not_a_wifi_failure() {
+        use super::append_network_config_diagnostics;
+        use crate::platform::linux::network_config::{NetworkConfigSnapshot, NetworkRoute};
+
+        let snapshot = NetworkConfigSnapshot {
+            address_query_succeeded: true,
+            route_query_succeeded: true,
+            dns_config_read: true,
+            default_routes: vec![NetworkRoute {
+                family: "IPv4".to_owned(),
+                interface: Some("eth0".to_owned()),
+                gateway: Some("192.0.2.1".to_owned()),
+                metric: Some(100),
+            }],
+            dns_servers: vec!["1.1.1.1".to_owned()],
+            ..NetworkConfigSnapshot::default()
+        };
+        let interfaces = vec![WifiInterface {
+            name: "wlp2s0".to_owned(),
+            operstate: Some("up".to_owned()),
+            carrier: Some(true),
+            driver: Some("iwlwifi".to_owned()),
+        }];
+        let mut checks = Vec::new();
+        let mut findings = Vec::new();
+
+        append_network_config_diagnostics(&snapshot, &interfaces, true, &mut checks, &mut findings);
+
+        assert!(checks.iter().any(|check| {
+            check.id == "network.default_route" && check.status == DiagnosticStatus::NotApplicable
+        }));
+        assert!(!findings.iter().any(|finding| finding.code == "NET-004"));
+    }
+
+    #[test]
+    fn unavailable_network_configuration_is_unknown_not_a_fault() {
+        use super::append_network_config_diagnostics;
+        use crate::platform::linux::network_config::NetworkConfigSnapshot;
+
+        let snapshot = NetworkConfigSnapshot {
+            warnings: vec!["iproute2 is unavailable".to_owned()],
+            ..NetworkConfigSnapshot::default()
+        };
+        let interfaces = vec![WifiInterface {
+            name: "wlp2s0".to_owned(),
+            operstate: Some("up".to_owned()),
+            carrier: Some(true),
+            driver: Some("iwlwifi".to_owned()),
+        }];
+        let mut checks = Vec::new();
+        let mut findings = Vec::new();
+
+        append_network_config_diagnostics(&snapshot, &interfaces, true, &mut checks, &mut findings);
+
+        assert!(checks.iter().any(|check| {
+            check.id == "network.configuration.completeness"
+                && check.status == DiagnosticStatus::Unknown
+        }));
+        assert!(!findings.iter().any(|finding| {
+            finding.code == "WIFI-011" || finding.code == "NET-003" || finding.code == "NET-004"
+        }));
+    }
+
+    #[test]
+    fn wifi_without_a_link_does_not_create_route_or_address_failures() {
+        use super::append_network_config_diagnostics;
+        use crate::platform::linux::network_config::NetworkConfigSnapshot;
+
+        let snapshot = NetworkConfigSnapshot {
+            address_query_succeeded: true,
+            route_query_succeeded: true,
+            dns_config_read: true,
+            ..NetworkConfigSnapshot::default()
+        };
+        let interfaces = vec![WifiInterface {
+            name: "wlp2s0".to_owned(),
+            operstate: Some("down".to_owned()),
+            carrier: Some(false),
+            driver: None,
+        }];
+        let mut checks = Vec::new();
+        let mut findings = Vec::new();
+
+        append_network_config_diagnostics(&snapshot, &interfaces, true, &mut checks, &mut findings);
+
+        assert!(checks.iter().any(|check| {
+            check.id == "wifi.ip.address" && check.status == DiagnosticStatus::NotApplicable
+        }));
+        assert!(checks.iter().any(|check| {
+            check.id == "network.default_route" && check.status == DiagnosticStatus::NotApplicable
+        }));
+        assert!(checks.iter().any(|check| {
+            check.id == "network.dns.configuration"
+                && check.status == DiagnosticStatus::NotApplicable
+        }));
+        assert!(findings.is_empty());
     }
 
     #[test]

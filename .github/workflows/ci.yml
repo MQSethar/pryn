@@ -3,9 +3,14 @@ name: PRYN CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: pryn-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,18 +19,18 @@ jobs:
   verify:
     name: verify (Ubuntu)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Check formatting
-        run: cargo fmt --all -- --check
+      - name: Install the toolchain from rust-toolchain.toml
+        uses: actions-rust-lang/setup-rust-toolchain@v2
 
-      - name: Run Clippy
-        run: cargo clippy --all-targets --all-features --locked -- -D warnings
+      - name: Print toolchain versions
+        run: |
+          rustc --version
+          cargo --version
 
-      - name: Run tests
-        run: cargo test --all-targets --all-features --locked
-
-      - name: Build release binary
-        run: cargo build --release --locked
+      - name: Verify formatting, lint, tests, and release build
+        run: ./scripts/verify.sh

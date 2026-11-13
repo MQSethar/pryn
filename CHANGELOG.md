@@ -32,3 +32,10 @@
 - Add Bluetooth audio-card/profile diagnostics for PipeWire `bluez5` and PulseAudio-compatible BlueZ cards; redact MAC-like Bluetooth endpoint identifiers from reports.
 - Avoid false `AUDIO-008` findings for Bluetooth cards left on the `off` profile after a device disconnects, and redact Bluetooth identifiers when a default endpoint cannot be matched to inventory.
 - Add synthetic tests for powered/off adapters, connected and disconnected devices, unavailable BlueZ, and Bluetooth audio profile visibility.
+
+- Add read-only Wi-Fi IP-address, IPv4/IPv6 default-route, and DNS-configuration diagnostics with bounded `ip -j` collection.
+- Add concise human output by default and `--verbose` for full checks/evidence.
+- Define CLI exit codes: 0 for a clean report, 1 for diagnostic attention/incomplete results, and 2 for execution/output errors.
+- Normalize PulseAudio channel volumes against `PA_VOLUME_NORM` rather than applying the cubic acoustic-gain conversion to configured sink/source levels.
+- Filter auxiliary Bluetooth sysfs entries such as `hci0:51` from canonical HCI controller inventory.
+- Consolidate CI verification through `scripts/verify.sh` using the pinned Rust toolchain.

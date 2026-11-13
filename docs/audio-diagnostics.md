@@ -32,7 +32,8 @@ Audio card snapshots identify Bluetooth audio cards through PipeWire's `device.a
 - A muted default output is a warning, but may be intentional.
 - A zero default output level is reported separately from mute state.
 - Input mute is surfaced as an informational privacy state, not an instruction to unmute.
-- Volume above 100% is amplification and may cause distortion; PRYN cannot prove clipping from configuration alone.
+- PulseAudio channel volume is normalized against `PA_VOLUME_NORM` so the report matches the server's user-facing level (for example, 5% remains 5%). PRYN does not apply PulseAudio's cubic-to-linear acoustic-gain conversion to sink/source levels; PulseAudio documents that such conversions should not be used unless the device advertises decibel-volume support.
+- Volume above 100% is configured amplification and may cause distortion; PRYN cannot prove clipping from configuration alone.
 - A channel configured at zero while other channels are active is a possible balance issue, not proof of a damaged speaker/microphone.
 - Monitor sources capture playback output. They are not counted as microphone inputs.
 - Non-monitor sources may still be virtual; PRYN does not claim they are physical microphones without stronger evidence.

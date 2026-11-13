@@ -1295,7 +1295,11 @@ fn endpoint_evidence(endpoint: &AudioEndpoint) -> Evidence {
         "Audio endpoint",
         format!(
             "{}; state: {:?}; muted: {}; {}; {}.",
-            safe_endpoint_name(&endpoint.name), endpoint.state, mute_state, volume, spec
+            safe_endpoint_name(&endpoint.name),
+            endpoint.state,
+            mute_state,
+            volume,
+            spec
         ),
     )
 }
@@ -1552,10 +1556,12 @@ mod tests {
     fn native_pipewire_is_used_when_no_pulseaudio_compatible_socket_exists() {
         use crate::platform::linux::pipewire::PipeWireSnapshot;
 
-        let mut graph = PipeWireSnapshot::default();
-        graph.core_name = Some("pipewire-0".to_owned());
-        graph.core_version = Some("1.6.10".to_owned());
-        graph.default_sink_name = Some("speaker".to_owned());
+        let mut graph = PipeWireSnapshot {
+            core_name: Some("pipewire-0".to_owned()),
+            core_version: Some("1.6.10".to_owned()),
+            default_sink_name: Some("speaker".to_owned()),
+            ..PipeWireSnapshot::default()
+        };
         graph.sinks.push(endpoint("speaker", false, 0.75));
         graph.default_source_name = Some("mic".to_owned());
         graph.sources.push(AudioSource {
@@ -1619,6 +1625,28 @@ mod tests {
                 .findings
                 .iter()
                 .any(|finding| finding.code == "AUDIO-002")
+        );
+    }
+
+    #[test]
+    fn low_nonzero_output_volume_is_reported_as_five_percent_not_zero() {
+        let report = evaluate_snapshot(
+            hardware_snapshot(),
+            Ok(server_snapshot(endpoint("speaker", false, 0.05))),
+        );
+        let volume_check = report
+            .checks
+            .iter()
+            .find(|check| check.id == "audio.output.volume")
+            .expect("default output volume check should exist");
+
+        assert_eq!(volume_check.status, DiagnosticStatus::Pass);
+        assert!(volume_check.summary.contains("5%"));
+        assert!(
+            !report
+                .findings
+                .iter()
+                .any(|finding| finding.code == "AUDIO-003")
         );
     }
 
@@ -1708,7 +1736,11 @@ mod tests {
 
     #[test]
     fn bluetooth_audio_cards_are_detected_without_exposing_device_addresses() {
-        let mut snapshot = server_snapshot(endpoint("bluez_output.AA_BB_CC_DD_EE_FF.a2dp-sink", false, 1.0));
+        let mut snapshot = server_snapshot(endpoint(
+            "bluez_output.AA_BB_CC_DD_EE_FF.a2dp-sink",
+            false,
+            1.0,
+        ));
         if let Some(cards) = snapshot.cards.as_mut() {
             cards[0].name = "bluez_card.AA_BB_CC_DD_EE_FF".to_owned();
             cards[0].device_api = Some("bluez5".to_owned());
@@ -1724,8 +1756,7 @@ mod tests {
         assert_eq!(bluetooth_check.status, DiagnosticStatus::Pass);
         assert!(!bluetooth_check.summary.contains("AA_BB_CC_DD_EE_FF"));
         assert!(report.checks.iter().any(|check| {
-            check.id == "audio.output.default"
-                && !check.summary.contains("AA_BB_CC_DD_EE_FF")
+            check.id == "audio.output.default" && !check.summary.contains("AA_BB_CC_DD_EE_FF")
         }));
     }
 
@@ -1750,9 +1781,12 @@ mod tests {
             .expect("Bluetooth profile check should exist");
 
         assert_eq!(bluetooth_check.status, DiagnosticStatus::NotApplicable);
-        assert!(!report.findings.iter().any(|finding| {
-            finding.code == "AUDIO-008"
-        }));
+        assert!(
+            !report
+                .findings
+                .iter()
+                .any(|finding| { finding.code == "AUDIO-008" })
+        );
     }
 
     #[test]

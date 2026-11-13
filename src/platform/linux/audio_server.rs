@@ -59,6 +59,8 @@ pub struct AudioPort {
     pub availability: AudioAvailability,
 }
 
+/// Per-channel volume levels normalized to the provider's 100% reference.
+/// Values above 1.0 represent configured amplification; unknown values stay `None`.
 #[derive(Clone, Debug, Default)]
 pub struct AudioVolume {
     /// Lowest channel volume in linear units (1.0 is 100%).
@@ -546,10 +548,11 @@ fn convert_sample_spec(spec: &protocol::SampleSpec) -> AudioSampleSpec {
 }
 
 fn convert_volume(volume: &protocol::ChannelVolume) -> AudioVolume {
+    let normal = protocol::Volume::NORM.as_u32() as f32;
     let values: Vec<f32> = volume
         .channels()
         .iter()
-        .map(|channel| channel.to_linear())
+        .map(|channel| channel.as_u32() as f32 / normal)
         .filter(|value| value.is_finite())
         .collect();
 
@@ -679,7 +682,7 @@ mod tests {
     }
 
     #[test]
-    fn converts_protocol_volume_to_linear_levels() {
+    fn converts_protocol_volume_to_normalized_levels() {
         let normal = convert_volume(&ChannelVolume::norm(2));
         assert_eq!(normal.minimum, Some(1.0));
         assert_eq!(normal.maximum, Some(1.0));
@@ -695,5 +698,11 @@ mod tests {
         assert_eq!(mixed.minimum, Some(0.0));
         assert_eq!(mixed.maximum, Some(1.0));
         assert_eq!(mixed.average, Some(0.5));
+
+        let mut quiet = ChannelVolume::empty();
+        quiet.push(Volume::from_u32_clamped(3_277));
+        quiet.push(Volume::from_u32_clamped(3_277));
+        let quiet = convert_volume(&quiet);
+        assert!((quiet.average.unwrap_or_default() - 0.05).abs() < 0.001);
     }
 }
