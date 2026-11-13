@@ -8,8 +8,7 @@ permissions:
   contents: read
 
 env:
-  CARGO_TERM_COLOR: always
-
+  CARGO_TERM_COLOR: alwaysear
 jobs:
   verify:
     name: verify (Ubuntu)

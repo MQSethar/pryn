@@ -426,8 +426,8 @@ fn exchange<T: CommandReply>(
     Ok(reply)
 }
 
-fn map_handshake_error(error: AudioServerFailure) -> AudioServerFailure {
-    match error {
+fn map_handshake_error(error: protocol::ProtocolError) -> AudioServerFailure {
+    match map_protocol_error(error) {
         AudioServerFailure::QueryTimedOut => AudioServerFailure::QueryTimedOut,
         AudioServerFailure::ConnectionFailed => AudioServerFailure::ConnectionFailed,
         _ => AudioServerFailure::AuthenticationFailed,
@@ -593,8 +593,8 @@ mod tests {
     #![allow(clippy::expect_used, clippy::unwrap_used)]
 
     use super::{
-        AudioServerFailure, AudioServerKind, classify_server, convert_profile_availability,
-        convert_volume, first_available_socket, map_handshake_error, map_protocol_error,
+        AudioServerKind, classify_server, convert_profile_availability, convert_volume,
+        first_available_socket, map_protocol_error,
     };
     use pulseaudio::protocol::{ChannelVolume, Volume};
 
@@ -637,26 +637,6 @@ mod tests {
         assert_eq!(convert_profile_availability(1), AudioAvailability::No);
         assert_eq!(convert_profile_availability(2), AudioAvailability::Yes);
         assert_eq!(convert_profile_availability(99), AudioAvailability::Unknown);
-    }
-
-    #[test]
-    fn preserves_transport_failures_during_handshake_error_mapping() {
-        assert_eq!(
-            map_handshake_error(AudioServerFailure::QueryTimedOut),
-            AudioServerFailure::QueryTimedOut,
-        );
-        assert_eq!(
-            map_handshake_error(AudioServerFailure::ConnectionFailed),
-            AudioServerFailure::ConnectionFailed,
-        );
-        assert_eq!(
-            map_handshake_error(AudioServerFailure::RequestRejected),
-            AudioServerFailure::AuthenticationFailed,
-        );
-        assert_eq!(
-            map_handshake_error(AudioServerFailure::ProtocolFailure),
-            AudioServerFailure::AuthenticationFailed,
-        );
     }
 
     #[test]

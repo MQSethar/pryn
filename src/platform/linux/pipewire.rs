@@ -242,11 +242,6 @@ fn parse_node(info: &Value, props: &Value, snapshot: &mut PipeWireSnapshot) {
     };
     let description =
         string_prop(props, "node.description").or_else(|| string_prop(props, "node.nick"));
-    let is_source = media_class == "Audio/Source" || media_class.starts_with("Audio/Source/");
-    let is_monitor = is_source
-        && (media_class.contains("Monitor")
-            || name.to_ascii_lowercase().ends_with(".monitor")
-            || props.get("stream.capture.sink").and_then(Value::as_bool) == Some(true));
     let endpoint = parse_endpoint(info, props, name, description);
 
     if media_class == "Audio/Sink" || media_class.starts_with("Audio/Sink/") {
@@ -257,7 +252,10 @@ fn parse_node(info: &Value, props: &Value, snapshot: &mut PipeWireSnapshot) {
             is_monitor: false,
             endpoint,
         });
-    } else if is_source {
+    } else if media_class == "Audio/Source" || media_class.starts_with("Audio/Source/") {
+        let is_monitor = media_class.contains("Monitor")
+            || name.to_ascii_lowercase().ends_with(".monitor")
+            || props.get("stream.capture.sink").and_then(Value::as_bool) == Some(true);
         snapshot.sources.push(AudioSource {
             endpoint,
             is_monitor,
