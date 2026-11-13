@@ -64,6 +64,7 @@ These identifiers are part of the JSON report contract. Renaming or changing the
 
 ## Current implementation caveats
 
+
 - rfkill values are read as separate sysfs attributes and may change during collection; they are not an atomic snapshot.
 - Wi-Fi `carrier` and `operstate` do not establish IP configuration, default route, DNS, or internet reachability.
 - NetworkManager connectivity state is system-wide, may be stale, and is not a direct per-Wi-Fi reachability test.
