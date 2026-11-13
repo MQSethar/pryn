@@ -1,4 +1,6 @@
+pub mod audio_server;
 pub mod network_manager;
+pub mod pipewire;
 
 use std::ffi::OsStr;
 use std::fs;
