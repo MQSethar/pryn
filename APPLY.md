@@ -1,59 +1,38 @@
-# Apply the PRYN Wi-Fi / NetworkManager update
+# Applying this PRYN source snapshot
 
-This update adds read-only NetworkManager D-Bus checks to the Wi-Fi subsystem. It does not change the public CLI: use `pryn check` and `pryn check wifi`.
+This ZIP is a **complete project snapshot**, not a small overlay patch. Do not extract it directly over a working PRYN checkout until you have preserved your current work.
 
-## Before applying
+## Safe review
 
-From `~/Projects/pryn`, check your worktree:
-
-```bash
-git status --short
-```
-
-Keep your current branch and local changes. This archive intentionally does not include `src/main.rs`, `Cargo.lock`, or `rust-toolchain.toml`.
-
-## Apply
-
-Extract the archive into the repository root, replacing the listed files:
+Create a separate directory and extract the archive there:
 
 ```bash
-unzip -o ~/Downloads/pryn-wifi-networkmanager-update.zip -d .
+mkdir -p ~/Projects/pryn-audio-bluetooth-review
+unzip -q ~/Downloads/pryn-audio-bluetooth-fixed.zip -d ~/Projects/pryn-audio-bluetooth-review
+cd ~/Projects/pryn-audio-bluetooth-review
 ```
 
-This update uses `zbus` 5.19 with its blocking D-Bus API. Add it to the project and let Cargo update the existing lockfile:
+Review and validate the snapshot before replacing or merging anything into your main checkout. Keep your existing repository, branch, uncommitted changes, and backups untouched until the new snapshot passes verification.
+
+## Verify
+
+The project pins its Rust toolchain in `rust-toolchain.toml`. With that toolchain installed, run:
 
 ```bash
-cargo add zbus@5.19.0 --features blocking-api
-cargo check
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features --locked -- -D warnings
+cargo test --all-targets --all-features --locked
+cargo build --release --locked
 ```
 
-Commit both `Cargo.toml` and `Cargo.lock` with the implementation. Do not hand-edit the lockfile.
-
-Format and verify:
+Then exercise the read-only checks on the target Linux machine:
 
 ```bash
-cargo fmt --all
-./scripts/verify.sh
+cargo run -- check audio
+cargo run -- check bluetooth
+cargo run -- check --format json
 ```
 
-Run the Wi-Fi checks:
+## Scope and safety
 
-```bash
-cargo run -- check wifi
-cargo run -- check --format json --output /tmp/pryn-wifi-report.json
-python -m json.tool /tmp/pryn-wifi-report.json >/dev/null
-```
-
-If NetworkManager or the system D-Bus is unavailable, PRYN should report that the information could not be checked. It must not crash or claim success.
-
-## What this update checks
-
-- NetworkManager service availability on the system D-Bus.
-- Global networking, Wi-Fi software-switch and hardware-radio state.
-- Wi-Fi device state, including unmanaged, disconnected, unavailable, authentication, active, and failed states.
-- NetworkManager firmware and device-plugin warning properties.
-- NetworkManager's existing connectivity result, only when its connectivity-check service is configured and enabled. This is the last system-wide result, not a fresh Wi-Fi-specific test.
-
-The connectivity result is system-wide and may reflect Ethernet or another interface. PRYN does not invoke NetworkManager's active connectivity test or send its own internet request.
-
-Direct iwd inspection, IP address, route and DNS checks remain unimplemented in this update.
+The update keeps PRYN read-only. Bluetooth pairing, connection, discovery, audio profile changes, audio playback, and microphone recording are not initiated. BlueZ state is read through the system D-Bus; audio state is read through the PulseAudio-compatible socket and, when available, native PipeWire `pw-dump` output. Real playback and capture still require a separate, explicit hardware test workflow.
