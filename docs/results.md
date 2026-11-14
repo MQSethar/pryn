@@ -29,12 +29,12 @@ Finding codes are intended to remain stable once publicly documented. Current co
 
 - `WIFI-001`: Wi-Fi radio has an rfkill block.
 - `WIFI-003`: NetworkManager reports that global networking is disabled.
-- `WIFI-004`: NetworkManager reports that the Wi-Fi software switch is disabled.
+- `WIFI-004`: the supported Wi-Fi manager reports its software radio disabled or all managed wireless devices powered off.
 - `WIFI-005`: NetworkManager reports that wireless hardware is disabled.
 - `WIFI-006`: a NetworkManager-managed Wi-Fi connection attempt failed.
 - `WIFI-007`: NetworkManager reports that a Wi-Fi adapter is unavailable.
 - `WIFI-008`: NetworkManager reports that Wi-Fi authentication is required.
-- `WIFI-009`: no NetworkManager-managed Wi-Fi adapter is connected.
+- `WIFI-009`: the supported Wi-Fi manager reports no active station connection.
 - `WIFI-010`: NetworkManager reports a possible missing firmware or device plugin dependency.
 - `WIFI-011`: a Wi-Fi link is up but no global IPv4 or IPv6 address is configured on a discovered Wi-Fi interface.
 - `NET-001`: NetworkManager reports that a captive-portal sign-in may be required.

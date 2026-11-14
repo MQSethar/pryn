@@ -27,6 +27,10 @@ Or run `./scripts/verify.sh`.
 - Keep `Cargo.toml` and `Cargo.lock` changes together in the same pull request.
 - Update diagnostic documentation when a finding's meaning or report schema changes.
 
+## Licensing
+
+PRYN is offered under either the MIT License or Apache License 2.0, at the recipient's option. Before submitting code, make sure you have the right to contribute it under these terms. By intentionally submitting a contribution for inclusion, you submit it under the same dual-license terms unless you and the maintainers agree otherwise in writing.
+
 ## Pull requests
 
-Use a focused branch and a descriptive commit. Explain the observed behavior, the evidence source, failure modes, tests added, and any distribution-specific assumptions. Do not merge a failing CI check.
+Use a focused branch and a descriptive commit. Explain the observed behavior, the evidence source, failure modes, tests added, and any distribution-specific assumptions. Do not merge a failing CI check. Release and packaging instructions are in [`docs/releasing.md`](docs/releasing.md).

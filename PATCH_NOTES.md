@@ -1,39 +1,52 @@
-# PRYN first-MVP implementation patch
+# PRYN follow-up implementation: finish the v0.1 diagnostic scope
 
-This overlay completes the scoped first CLI MVP for Wi-Fi, Bluetooth, and audio. It deliberately does not add a TUI, daemon, auto-repair, telemetry, direct iwd support, active internet probes, or unattended audio playback/recording tests.
+This is an incremental overlay for the already-applied first-MVP patch. It completes two remaining pieces of diagnostic behavior without expanding PRYN into a daemon, repair utility, or interactive sound tester.
 
-## Correctness fixes
+## Implementation changes
 
-1. Annotates the BlueZ `NameHasOwner` D-Bus return as `bool`, resolving the reported `E0282` inference failure.
-2. Filters `/sys/class/bluetooth` to canonical `hci<number>` controller entries, excluding auxiliary entries such as `hci0:51`.
-3. Normalizes PulseAudio sink/source levels against `PA_VOLUME_NORM`; a configured 5% remains 5% instead of being cubic-converted to a near-zero display value.
-4. Uses carrier state ahead of a stale `operstate=up` when deciding whether a Wi-Fi link is currently present.
-5. Preserves `unknown` when the Wi-Fi interface inventory is unavailable instead of inventing negative address/route conclusions.
-6. Keeps IP addresses, default routes, DNS configuration, and NetworkManager's last connectivity result as separate observations. None is presented as proof of end-to-end internet reachability.
-7. Keeps Bluetooth controller inventory, BlueZ service state, adapter power, device pairing/connection, and Bluetooth audio profiles as separate checks. Device addresses are not retained in the BlueZ diagnostic snapshot.
+### Standalone iwd support
 
-## First-MVP functionality
+- When NetworkManager is absent and `net.connman.iwd` owns the system-bus name, PRYN reads iwd's root ObjectManager snapshot.
+- Reads only `Device.Name`, `Device.Powered`, `Device.Mode`, `Station.State`, and `Station.Scanning`.
+- Handles station, access-point, and ad-hoc device modes without labeling a non-station device as a disconnected Wi-Fi client.
+- Reports connected, disconnected, transitional, missing, and unavailable states conservatively.
+- Keeps NetworkManager as the preferred manager-facing API when it is present, including NetworkManager installations that use iwd internally.
+- Does not call `Scan`, `Connect`, `Disconnect`, or write any iwd property. It does not read SSIDs, network object names, or hardware addresses.
 
-- Read-only Wi-Fi IP address inspection for discovered wireless interfaces.
-- IPv4 and IPv6 system default-route inspection.
-- Read-only nameserver configuration inspection from `/etc/resolv.conf`.
-- Optional `iproute2` execution through `ip -j`, without a shell, with a 2-second timeout and 2 MiB output cap.
-- Compact human-readable output by default; `pryn check --verbose` includes every check and its evidence.
-- JSON output remains schema-versioned and includes full diagnostic evidence.
-- Exit codes: `0` clean completed report, `1` findings or unresolved/incomplete diagnostics, `2` execution/output failure.
-- CI uses `actions/checkout@v7` and `actions-rust-lang/setup-rust-toolchain@v2` to install the toolchain/components specified by `rust-toolchain.toml`, then runs the same `scripts/verify.sh` used locally.
-- Cargo package metadata includes repository, README, and discovery keywords. No license is selected on the user's behalf.
+### Audio profile consistency
 
-## Verification status
+- A profile actively selected by the audio server is not automatically considered healthy if the same provider marks it unavailable or unknown.
+- A conflicting or incomplete active-profile inventory is reported as `unknown`, not as a hardware failure and not as a pass.
+- The Bluetooth-specific profile check retains this behavior while continuing to redact MAC-like card and endpoint identifiers.
+- Port availability remains `unknown` when the audio provider cannot determine physical jack availability. Configuration cannot prove audible playback or intelligible capture.
 
-- Source and documentation were reviewed in this environment.
-- ZIP integrity is checked after packaging.
-- This environment does not have `cargo`, `rustc`, or `rustfmt`; therefore this patch has **not** been compiled, formatted by rustfmt, linted, or tested here. Run `cargo fmt --all` followed by `./scripts/verify.sh` on the pinned Rust toolchain before committing or merging.
+## Documentation
 
-## Runtime boundaries
+- Updated the support matrix, architecture, audio interpretation, finding-code definitions, README, and changelog.
+- Clarified that active internet probes, unattended playback/recording, Bluetooth pairing/connection automation, a TUI, a daemon, and automatic repair remain outside the read-only v0.1 command.
 
-- NetworkManager is the supported Wi-Fi connection-manager provider. iwd is identified but direct iwd connection-state inspection is outside this MVP.
-- `/etc/resolv.conf` may point to a local stub and is not proof that DNS resolution works.
-- A route through a different interface is not classified as a Wi-Fi route failure.
-- Audio endpoint/profile configuration does not prove physical playback or intelligible microphone capture. PRYN does not play or record audio automatically.
-- Bluetooth discovery, pairing, connecting, profile switching, and radio changes remain outside the read-only diagnostic command.
+## Verification
+
+The user's previous local run of the preceding patch reported 81 library tests and 5 CLI tests passing, along with formatting, strict Clippy, and a release build. This follow-up adds synthetic tests for standalone iwd states, non-station iwd modes, and conflicting/unknown audio profile availability.
+
+The supplied latest run demonstrates that the local `unknown_check` helper is now in scope and PRYN successfully recompiles and runs the three subsystem commands. It also shows rustfmt differences in `wifi.rs`; this overlay applies the expected formatting changes. This container does not have `cargo`, `rustc`, or `rustfmt`, so the complete updated overlay has **not** been compiled, formatted by rustfmt, linted, tested, or packaged by Cargo here. On the target machine, run `cargo fmt --all` and `./scripts/verify.sh` before committing. Also validate the standalone iwd path on a machine actually running iwd; the supplied logs exercise NetworkManager, not standalone iwd.
+
+## Release boundaries that remain intentional
+
+- No live ping, DNS, or HTTP internet check. NetworkManager's cached connectivity state is system-wide and may be stale; IP, route, and resolver observations only describe local configuration.
+- No test-tone playback or microphone recording. A future `pryn test audio` command needs explicit consent and a separate privacy/safety design.
+- No Bluetooth discovery, pairing, connection, or profile switching.
+- No background daemon, auto-repair, telemetry, or root requirement.
+- rfkill is still a best-effort sysfs snapshot, not an atomic `/dev/rfkill` read.
+- Other distributions, non-systemd environments, and aarch64 still need runtime validation.
+
+## Release preparation added
+
+- Select dual licensing under MIT OR Apache-2.0 and include both complete license texts.
+- Add crates.io metadata and `cargo package --locked` to the verification gate.
+- Add a Linux x86_64 GNU release packaging script that embeds the binary, README, changelog, and both license texts and generates SHA-256 checksums.
+- Add a tag-triggered workflow that verifies, builds, packages, and creates a draft GitHub Release for manual review.
+- Add a first-release guide covering crate-name availability, package inspection, dry-run publication, manual crates.io publication, tag creation, release review, and installation.
+- Add a vulnerability-reporting policy and update README installation/licensing instructions.
+
+No external release action, crates.io token, personal access token, or repository secret is required by the release workflow. Actual publication remains a deliberate manual action because a crates.io version is effectively permanent once published.

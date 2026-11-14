@@ -3,8 +3,8 @@ use crate::model::{
 };
 use crate::platform::linux::network_config::{self, NetworkConfigSnapshot};
 use crate::platform::linux::network_manager::{
-    NetworkManagerConnectivity, NetworkManagerDeviceState, NetworkManagerSnapshot,
-    NetworkManagerWifiDevice, WifiManagerProbe,
+    IwdSnapshot, IwdWifiDevice, NetworkManagerConnectivity, NetworkManagerDeviceState,
+    NetworkManagerSnapshot, NetworkManagerWifiDevice, WifiManagerProbe,
 };
 use crate::platform::linux::{
     LinuxCollector, ProbeError, RfkillDevice, WifiInterface, WifiSnapshot,
@@ -375,24 +375,10 @@ fn evaluate_network_manager(
                 ));
             }
         }
-        WifiManagerProbe::IwdDetected => {
-            checks.push(DiagnosticCheck::new(
-                "wifi.connection_service.available",
-                "Wi-Fi connection service",
-                DiagnosticStatus::NotImplemented,
-                "iwd is running. Direct iwd connection-state support is not available in this PRYN version yet.",
-                vec![Evidence::new(
-                    "system D-Bus",
-                    "The iwd service owns the `net.connman.iwd` bus name.",
-                )],
-            ));
-            checks.push(DiagnosticCheck::new(
-                "wifi.connection.state",
-                "Wi-Fi connection",
-                DiagnosticStatus::NotImplemented,
-                "PRYN has not yet read connection state directly from iwd.",
-                Vec::new(),
-            ));
+        WifiManagerProbe::Iwd(snapshot) => {
+            let (iwd_checks, iwd_findings) = evaluate_iwd_snapshot(&snapshot);
+            checks.extend(iwd_checks);
+            findings.extend(iwd_findings);
         }
         WifiManagerProbe::NoKnownManager => {
             checks.push(DiagnosticCheck::new(
@@ -445,6 +431,272 @@ fn evaluate_network_manager(
     }
 
     (checks, findings)
+}
+
+fn unknown_check(id: &'static str, title: &'static str, summary: &'static str) -> DiagnosticCheck {
+    DiagnosticCheck::new(id, title, DiagnosticStatus::Unknown, summary, Vec::new())
+}
+
+fn evaluate_iwd_snapshot(snapshot: &IwdSnapshot) -> (Vec<DiagnosticCheck>, Vec<Finding>) {
+    let mut checks = Vec::new();
+    let mut findings = Vec::new();
+
+    if snapshot.devices_query_succeeded {
+        checks.push(DiagnosticCheck::new(
+            "wifi.connection_service.available",
+            "Wi-Fi connection service",
+            DiagnosticStatus::Pass,
+            "iwd is available and its read-only device inventory was queried successfully.",
+            vec![Evidence::new(
+                "iwd D-Bus",
+                "PRYN read Device and Station properties through the ObjectManager snapshot.",
+            )],
+        ));
+    } else {
+        checks.push(DiagnosticCheck::new(
+            "wifi.connection_service.available",
+            "Wi-Fi connection service",
+            DiagnosticStatus::Unknown,
+            "iwd owns its D-Bus name, but its device inventory could not be queried.",
+            Vec::new(),
+        ));
+    }
+
+    if snapshot.wifi_devices.is_empty() {
+        checks.push(unknown_check(
+            "wifi.radio.software_state",
+            "Wi-Fi software switch",
+            "iwd did not expose a wireless device whose power state could be checked.",
+        ));
+        checks.push(unknown_check(
+            "wifi.connection.state",
+            "Wi-Fi connection",
+            "iwd did not expose a Station interface with a connection state.",
+        ));
+    } else {
+        let powered_devices = snapshot
+            .wifi_devices
+            .iter()
+            .filter(|device| device.powered == Some(true))
+            .collect::<Vec<_>>();
+        let known_powered_states = snapshot
+            .wifi_devices
+            .iter()
+            .filter(|device| device.powered.is_some())
+            .count();
+        let power_evidence = iwd_device_evidence(&snapshot.wifi_devices);
+
+        if !powered_devices.is_empty() {
+            checks.push(DiagnosticCheck::new(
+                "wifi.radio.software_state",
+                "Wi-Fi software switch",
+                DiagnosticStatus::Pass,
+                format!(
+                    "iwd reports {} of {} wireless device(s) powered on.",
+                    powered_devices.len(),
+                    snapshot.wifi_devices.len()
+                ),
+                power_evidence.clone(),
+            ));
+        } else if known_powered_states == snapshot.wifi_devices.len() {
+            let summary = "iwd reports that all wireless devices are powered off.";
+            checks.push(DiagnosticCheck::new(
+                "wifi.radio.software_state",
+                "Wi-Fi software switch",
+                DiagnosticStatus::Warning,
+                summary,
+                power_evidence.clone(),
+            ));
+            findings.push(Finding::new(
+                "WIFI-004",
+                Severity::Low,
+                "Wi-Fi radio is powered off",
+                summary,
+                power_evidence.clone(),
+                vec![
+                    "Enable the intended wireless device in your network settings or with your iwd management tool if Wi-Fi should be active.".to_owned(),
+                ],
+            ));
+        } else {
+            checks.push(DiagnosticCheck::new(
+                "wifi.radio.software_state",
+                "Wi-Fi software switch",
+                DiagnosticStatus::Unknown,
+                "iwd did not expose a conclusive power state for any wireless device.",
+                power_evidence.clone(),
+            ));
+        }
+
+        let station_devices = snapshot
+            .wifi_devices
+            .iter()
+            .filter(|device| {
+                device
+                    .mode
+                    .as_deref()
+                    .is_none_or(|mode| mode.eq_ignore_ascii_case("station"))
+            })
+            .collect::<Vec<_>>();
+        let connected = station_devices
+            .iter()
+            .filter(|device| is_iwd_state(device, "connected"))
+            .collect::<Vec<_>>();
+        let transitional = station_devices.iter().any(|device| {
+            ["connecting", "disconnecting", "roaming"]
+                .iter()
+                .any(|state| is_iwd_state(device, state))
+        });
+        let all_disconnected = !station_devices.is_empty()
+            && station_devices
+                .iter()
+                .all(|device| is_iwd_state(device, "disconnected"));
+        let all_powered_off = snapshot
+            .wifi_devices
+            .iter()
+            .all(|device| device.powered == Some(false));
+
+        if !connected.is_empty() {
+            checks.push(DiagnosticCheck::new(
+                "wifi.connection.state",
+                "Wi-Fi connection",
+                DiagnosticStatus::Pass,
+                format!(
+                    "iwd reports an active Wi-Fi connection on {} device(s). This confirms iwd's connection state, not internet reachability.",
+                    connected.len()
+                ),
+                iwd_device_evidence(&snapshot.wifi_devices),
+            ));
+        } else if all_powered_off {
+            checks.push(DiagnosticCheck::new(
+                "wifi.connection.state",
+                "Wi-Fi connection",
+                DiagnosticStatus::NotApplicable,
+                "All iwd wireless devices are powered off, so no active station connection is expected.",
+                power_evidence.clone(),
+            ));
+        } else if station_devices.is_empty() {
+            checks.push(DiagnosticCheck::new(
+                "wifi.connection.state",
+                "Wi-Fi connection",
+                DiagnosticStatus::NotApplicable,
+                "No iwd-managed wireless device is in station mode; a client Wi-Fi connection state does not apply.",
+                power_evidence.clone(),
+            ));
+        } else if all_disconnected {
+            let summary = "iwd reports that all wireless stations are disconnected.";
+            let evidence = iwd_device_evidence(&snapshot.wifi_devices);
+            checks.push(DiagnosticCheck::new(
+                "wifi.connection.state",
+                "Wi-Fi connection",
+                DiagnosticStatus::Warning,
+                summary,
+                evidence.clone(),
+            ));
+            findings.push(Finding::new(
+                "WIFI-009",
+                Severity::Low,
+                "No Wi-Fi connection is active",
+                summary,
+                evidence,
+                vec![
+                    "Connect to the intended wireless network using your iwd management tool if a connection is expected.".to_owned(),
+                ],
+            ));
+        } else if transitional {
+            checks.push(DiagnosticCheck::new(
+                "wifi.connection.state",
+                "Wi-Fi connection",
+                DiagnosticStatus::Unknown,
+                "iwd reports a connection transition. PRYN cannot yet classify the station as connected or disconnected.",
+                iwd_device_evidence(&snapshot.wifi_devices),
+            ));
+        } else {
+            checks.push(DiagnosticCheck::new(
+                "wifi.connection.state",
+                "Wi-Fi connection",
+                DiagnosticStatus::Unknown,
+                "iwd device state was read, but no conclusive Station connection state was exposed.",
+                iwd_device_evidence(&snapshot.wifi_devices),
+            ));
+        }
+    }
+
+    // iwd exposes per-device power and station state, not NetworkManager's
+    // global networking/hardware-switch or firmware/plugin diagnostic flags.
+    // Kernel rfkill and driver association are reported by independent checks.
+    checks.push(DiagnosticCheck::new(
+        "wifi.networking.enabled",
+        "System networking",
+        DiagnosticStatus::NotApplicable,
+        "iwd does not expose a NetworkManager-style system-wide networking switch.",
+        Vec::new(),
+    ));
+    checks.push(DiagnosticCheck::new(
+        "wifi.radio.hardware_state",
+        "Wi-Fi hardware switch",
+        DiagnosticStatus::NotApplicable,
+        "iwd does not expose a separate hardware-switch property; PRYN reports kernel rfkill state independently.",
+        Vec::new(),
+    ));
+    checks.push(DiagnosticCheck::new(
+        "wifi.device_dependencies",
+        "Wi-Fi firmware and support",
+        DiagnosticStatus::NotApplicable,
+        "iwd does not expose NetworkManager's firmware/plugin missing flags; kernel driver association is reported separately.",
+        Vec::new(),
+    ));
+    checks.push(DiagnosticCheck::new(
+        "network.internet_connectivity",
+        "Internet connectivity",
+        DiagnosticStatus::NotApplicable,
+        "No system-wide connectivity result is exposed through the iwd interface inspected by PRYN. No external connectivity probe is sent.",
+        Vec::new(),
+    ));
+
+    if !snapshot.warnings.is_empty() {
+        checks.push(DiagnosticCheck::new(
+            "wifi.connection_service.completeness",
+            "Connection service information",
+            DiagnosticStatus::Warning,
+            format!(
+                "Some iwd device or station properties could not be read ({} item(s)).",
+                snapshot.warnings.len()
+            ),
+            snapshot
+                .warnings
+                .iter()
+                .map(|warning| Evidence::new("iwd D-Bus", warning.clone()))
+                .collect(),
+        ));
+    }
+
+    (checks, findings)
+}
+
+fn is_iwd_state(device: &IwdWifiDevice, expected: &str) -> bool {
+    device
+        .station_state
+        .as_deref()
+        .is_some_and(|state| state.eq_ignore_ascii_case(expected))
+}
+
+fn iwd_device_evidence(devices: &[IwdWifiDevice]) -> Vec<Evidence> {
+    devices
+        .iter()
+        .map(|device| {
+            let interface = device.interface.as_deref().unwrap_or("unknown interface");
+            Evidence::new(
+                "iwd Device/Station",
+                format!(
+                    "{interface}: powered={:?}, mode={}, state={}, scanning={:?}.",
+                    device.powered,
+                    device.mode.as_deref().unwrap_or("unknown"),
+                    device.station_state.as_deref().unwrap_or("unknown"),
+                    device.scanning
+                ),
+            )
+        })
+        .collect()
 }
 
 fn evaluate_networking_enabled(
@@ -1334,8 +1586,8 @@ mod tests {
     use crate::model::{DiagnosticStatus, Subsystem};
     use crate::platform::linux::network_config::NetworkConfigSnapshot;
     use crate::platform::linux::network_manager::{
-        NetworkManagerConnectivity, NetworkManagerDeviceState, NetworkManagerSnapshot,
-        NetworkManagerWifiDevice, WifiManagerProbe,
+        IwdSnapshot, IwdWifiDevice, NetworkManagerConnectivity, NetworkManagerDeviceState,
+        NetworkManagerSnapshot, NetworkManagerWifiDevice, WifiManagerProbe,
     };
     use crate::platform::linux::{RfkillDevice, WifiInterface, WifiSnapshot};
 
@@ -1968,15 +2220,132 @@ mod tests {
     }
 
     #[test]
-    fn iwd_is_detected_but_not_claimed_as_supported_yet() {
-        let (checks, _) =
-            evaluate_network_manager(WifiManagerProbe::IwdDetected, 1, WifiRfkillState::default());
+    fn iwd_connected_station_is_reported_without_exposing_network_names() {
+        let probe = WifiManagerProbe::Iwd(IwdSnapshot {
+            devices_query_succeeded: true,
+            wifi_devices: vec![IwdWifiDevice {
+                interface: Some("wlp2s0".to_owned()),
+                powered: Some(true),
+                mode: Some("station".to_owned()),
+                station_state: Some("connected".to_owned()),
+                scanning: Some(false),
+            }],
+            warnings: Vec::new(),
+        });
+
+        let (checks, findings) = evaluate_network_manager(probe, 1, WifiRfkillState::default());
         assert_eq!(
             checks
                 .iter()
-                .find(|check| check.id == "wifi.connection_service.available")
+                .find(|check| check.id == "wifi.connection.state")
                 .map(|check| check.status),
-            Some(DiagnosticStatus::NotImplemented)
+            Some(DiagnosticStatus::Pass)
         );
+        assert!(findings.is_empty());
+        assert!(!checks.iter().any(|check| check.summary.contains("SSID")));
+    }
+
+    #[test]
+    fn iwd_disconnected_station_is_a_warning_not_a_hardware_failure() {
+        let probe = WifiManagerProbe::Iwd(IwdSnapshot {
+            devices_query_succeeded: true,
+            wifi_devices: vec![IwdWifiDevice {
+                interface: Some("wlp2s0".to_owned()),
+                powered: Some(true),
+                mode: Some("station".to_owned()),
+                station_state: Some("disconnected".to_owned()),
+                scanning: Some(false),
+            }],
+            warnings: Vec::new(),
+        });
+
+        let (checks, findings) = evaluate_network_manager(probe, 1, WifiRfkillState::default());
+        assert_eq!(
+            checks
+                .iter()
+                .find(|check| check.id == "wifi.connection.state")
+                .map(|check| check.status),
+            Some(DiagnosticStatus::Warning)
+        );
+        assert!(findings.iter().any(|finding| finding.code == "WIFI-009"));
+        assert!(!findings.iter().any(|finding| finding.code == "WIFI-006"));
+    }
+
+    #[test]
+    fn iwd_missing_station_state_remains_unknown() {
+        let probe = WifiManagerProbe::Iwd(IwdSnapshot {
+            devices_query_succeeded: true,
+            wifi_devices: vec![IwdWifiDevice {
+                interface: Some("wlp2s0".to_owned()),
+                powered: Some(true),
+                mode: Some("station".to_owned()),
+                station_state: None,
+                scanning: None,
+            }],
+            warnings: vec!["Station state could not be read".to_owned()],
+        });
+
+        let (checks, _) = evaluate_network_manager(probe, 1, WifiRfkillState::default());
+        assert_eq!(
+            checks
+                .iter()
+                .find(|check| check.id == "wifi.connection.state")
+                .map(|check| check.status),
+            Some(DiagnosticStatus::Unknown)
+        );
+        assert!(checks.iter().any(|check| {
+            check.id == "wifi.connection_service.completeness"
+                && check.status == DiagnosticStatus::Warning
+        }));
+    }
+
+    #[test]
+    fn iwd_access_point_mode_is_not_reported_as_a_disconnected_client() {
+        let probe = WifiManagerProbe::Iwd(IwdSnapshot {
+            devices_query_succeeded: true,
+            wifi_devices: vec![IwdWifiDevice {
+                interface: Some("wlp2s0".to_owned()),
+                powered: Some(true),
+                mode: Some("ap".to_owned()),
+                station_state: None,
+                scanning: None,
+            }],
+            warnings: Vec::new(),
+        });
+
+        let (checks, findings) = evaluate_network_manager(probe, 1, WifiRfkillState::default());
+        assert_eq!(
+            checks
+                .iter()
+                .find(|check| check.id == "wifi.connection.state")
+                .map(|check| check.status),
+            Some(DiagnosticStatus::NotApplicable)
+        );
+        assert!(findings.is_empty());
+    }
+
+    #[test]
+    fn iwd_transition_is_not_misreported_as_connected_or_disconnected() {
+        let probe = WifiManagerProbe::Iwd(IwdSnapshot {
+            devices_query_succeeded: true,
+            wifi_devices: vec![IwdWifiDevice {
+                interface: Some("wlp2s0".to_owned()),
+                powered: Some(true),
+                mode: Some("station".to_owned()),
+                station_state: Some("connecting".to_owned()),
+                scanning: Some(false),
+            }],
+            warnings: Vec::new(),
+        });
+
+        let (checks, findings) = evaluate_network_manager(probe, 1, WifiRfkillState::default());
+        assert_eq!(
+            checks
+                .iter()
+                .find(|check| check.id == "wifi.connection.state")
+                .map(|check| check.status),
+            Some(DiagnosticStatus::Unknown)
+        );
+        assert!(findings.is_empty());
     }
 }

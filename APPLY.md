@@ -1,38 +1,49 @@
-# Applying this PRYN source snapshot
+# Apply PRYN v0.1 release-preparation patch
 
-This ZIP is a **complete project snapshot**, not a small overlay patch. Do not extract it directly over a working PRYN checkout until you have preserved your current work.
+This patch assumes the first-MVP and v0.1 follow-up source changes are already in your repository. It includes the local Wi-Fi helper fix, rustfmt-compatible formatting for `wifi.rs`, dual license files, Cargo package metadata, release packaging, and release documentation/workflow. It does not publish anything or create a Git tag.
 
-## Safe review
-
-Create a separate directory and extract the archive there:
+## 1. Preserve your current work
 
 ```bash
-mkdir -p ~/Projects/pryn-audio-bluetooth-review
-unzip -q ~/Downloads/pryn-audio-bluetooth-fixed.zip -d ~/Projects/pryn-audio-bluetooth-review
-cd ~/Projects/pryn-audio-bluetooth-review
+cd ~/Projects/pryn
+git status --short
+tar --exclude='pryn/target' -czf ~/Projects/pryn-before-v0.1-release-prep.tar.gz -C ~/Projects pryn
 ```
 
-Review and validate the snapshot before replacing or merging anything into your main checkout. Keep your existing repository, branch, uncommitted changes, and backups untouched until the new snapshot passes verification.
+Do not reset, clean, or discard your branch. The source overlay intentionally updates tracked project files.
 
-## Verify
+## 2. Apply the archive
 
-The project pins its Rust toolchain in `rust-toolchain.toml`. With that toolchain installed, run:
+Download `pryn-v0.1-release-prep.zip` into `~/Downloads`, then:
 
 ```bash
-cargo fmt --all -- --check
-cargo clippy --all-targets --all-features --locked -- -D warnings
-cargo test --all-targets --all-features --locked
-cargo build --release --locked
+cd ~/Projects/pryn
+unzip -t ~/Downloads/pryn-v0.1-release-prep.zip
+unzip -o ~/Downloads/pryn-v0.1-release-prep.zip -d .
 ```
 
-Then exercise the read-only checks on the target Linux machine:
+## 3. Verify locally
 
 ```bash
-cargo run -- check audio
-cargo run -- check bluetooth
-cargo run -- check --format json
+cargo fmt --all
+./scripts/verify.sh
+cargo package --list
 ```
 
-## Scope and safety
+`./scripts/verify.sh` runs rustfmt check, strict Clippy, all unit/integration tests, a release build, and `cargo package --locked`. Do not commit unless it completes successfully.
 
-The update keeps PRYN read-only. Bluetooth pairing, connection, discovery, audio profile changes, audio playback, and microphone recording are not initiated. BlueZ state is read through the system D-Bus; audio state is read through the PulseAudio-compatible socket and, when available, native PipeWire `pw-dump` output. Real playback and capture still require a separate, explicit hardware test workflow.
+## 4. Inspect the release diff
+
+```bash
+git diff --check
+git status --short
+git diff --stat
+```
+
+Review both license files and confirm all code in the repository may legally be distributed under the selected licenses. Read `docs/releasing.md` before creating a tag or publishing to crates.io.
+
+## Important runtime status
+
+The supplied latest output shows Wi-Fi and Bluetooth fully passing. Audio has unresolved connection/profile observations because the provider cannot confirm physical port availability and marks the currently active profiles unavailable. This contradiction remains `unknown`; it is not safe to convert it into `pass` or a hardware-failure finding. Validate sound output and microphone capture manually, and test standalone iwd on a host that actually uses iwd without NetworkManager.
+
+The release workflow builds only x86_64 GNU/Linux. It creates a **draft** GitHub Release; it does not publish to crates.io, publish the GitHub release, or push a tag on your behalf.

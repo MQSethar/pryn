@@ -24,7 +24,7 @@ The existing sysfs collector independently discovers `/sys/class/sound` cards an
 
 ### Bluetooth audio
 
-Audio card snapshots identify Bluetooth audio cards through PipeWire's `device.api=bluez5` property or the corresponding BlueZ audio card/driver naming in PulseAudio-compatible providers. PRYN reports the active Bluetooth audio profile separately from BlueZ pairing/connection state. A paired Bluetooth device does not automatically imply that an A2DP playback or HFP/HSP capture profile is active. An `off` profile is not treated as a generic audio-card failure because BlueZ cards can remain visible after a headset disconnects; the profile check reports that state as not applicable when every Bluetooth audio card is off. Bluetooth card labels, endpoint identifiers, and MAC-like device labels are sanitized in diagnostic output.
+Audio card snapshots identify Bluetooth audio cards through PipeWire's `device.api=bluez5` property or the corresponding BlueZ audio card/driver naming in PulseAudio-compatible providers. PRYN reports the active Bluetooth audio profile separately from BlueZ pairing/connection state. A paired Bluetooth device does not automatically imply that an A2DP playback or HFP/HSP capture profile is active. An `off` profile is not treated as a generic audio-card failure because BlueZ cards can remain visible after a headset disconnects; the profile check reports that state as not applicable when every Bluetooth audio card is off. If a provider reports a non-`off` active profile as unavailable, or cannot confirm the active profile's availability, PRYN reports the profile check as unknown rather than claiming that the profile is healthy or the hardware is broken. Bluetooth card labels, endpoint identifiers, and MAC-like device labels are sanitized in diagnostic output.
 
 ## Diagnostic interpretation
 
@@ -37,7 +37,7 @@ Audio card snapshots identify Bluetooth audio cards through PipeWire's `device.a
 - A channel configured at zero while other channels are active is a possible balance issue, not proof of a damaged speaker/microphone.
 - Monitor sources capture playback output. They are not counted as microphone inputs.
 - Non-monitor sources may still be virtual; PRYN does not claim they are physical microphones without stronger evidence.
-- Port availability and active profiles are reported only when the provider exposes them. Absence of port data is not a physical disconnection.
+- Port availability and active profiles are reported only when the provider exposes them. Absence of port data is not a physical disconnection. When the provider explicitly says a selected port is unknown, the related check remains unknown rather than inferring a successful connection.
 - `pw-dump` graph data and PulseAudio-compatible endpoint data are separate provider observations. When both are available, PulseAudio-compatible details are used for richer endpoint checks and the native graph is reported independently.
 - Bluetooth pairing/connection state is collected separately from audio profile state. A connected Bluetooth device is not proof that an audio profile is active or that audio is flowing. PRYN does not infer a Bluetooth audio failure solely from an `off` profile because it cannot safely correlate a generic BlueZ device object with an audio card without exposing stable hardware identifiers.
 
