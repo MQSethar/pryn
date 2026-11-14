@@ -1,0 +1,47 @@
+name: PRYN Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pryn-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  TARGET: x86_64-unknown-linux-gnu
+
+jobs:
+  build-and-draft-release:
+    name: build Linux x86_64 release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@v7
+
+      - name: Install pinned Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v2
+
+      - name: Verify tagged source
+        run: ./scripts/verify.sh
+
+      - name: Build and package Linux binary
+        run: |
+          cargo build --release --locked --target "$TARGET"
+          version="${GITHUB_REF_NAME#v}"
+          ./scripts/package-linux.sh "$version" "$TARGET"
+
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --draft \
+            --generate-notes \
+            --title "PRYN $GITHUB_REF_NAME"

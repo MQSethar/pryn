@@ -236,6 +236,8 @@ fn property_object_path(properties: &PropertyMap, key: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used, clippy::unwrap_used)]
+
     use super::{
         ADAPTER_INTERFACE, DEVICE_INTERFACE, ManagedObjects, OwnedObjectPath, OwnedValue,
         snapshot_from_managed_objects,

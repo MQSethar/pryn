@@ -2,10 +2,10 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     match pryn::cli::run() {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(code) => code,
         Err(error) => {
             eprintln!("pryn: {error}");
-            ExitCode::FAILURE
+            ExitCode::from(2)
         }
     }
 }

@@ -1,5 +1,6 @@
 pub mod audio_server;
 pub mod bluez;
+pub mod network_config;
 pub mod network_manager;
 pub mod pipewire;
 
@@ -94,7 +95,7 @@ impl LinuxCollector {
                     continue;
                 };
 
-                if !name.starts_with("hci") {
+                if !is_hci_controller_name(name) {
                     continue;
                 }
 
@@ -246,6 +247,14 @@ fn parse_os_release_value(contents: &str, key: &str) -> Option<String> {
             Some(normalized.to_owned())
         }
     })
+}
+
+fn is_hci_controller_name(name: &str) -> bool {
+    let Some(index) = name.strip_prefix("hci") else {
+        return false;
+    };
+
+    !index.is_empty() && index.bytes().all(|byte| byte.is_ascii_digit())
 }
 
 fn read_directory(
@@ -422,6 +431,8 @@ mod tests {
 
         let controller = paths.sys_class_bluetooth.join("hci0");
         fs::create_dir_all(controller.join("device")).expect("controller device directory");
+        fs::create_dir_all(paths.sys_class_bluetooth.join("hci0:51"))
+            .expect("auxiliary Bluetooth sysfs entry");
         fs::create_dir_all(paths.sys_class_sound.join("card0")).expect("audio card directory");
         fs::write(paths.sys_class_sound.join("card0/id"), "PCH\n").expect("audio card id");
 

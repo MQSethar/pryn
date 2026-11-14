@@ -1184,7 +1184,37 @@ fn append_profile_diagnostics(
         if card.active_profile.is_none() {
             profile_state_unknown = true;
         }
-        details.push(format!("{}: {active}", display_card_name(card)));
+        let active_availability = card
+            .profiles
+            .iter()
+            .find(|profile| profile.name.eq_ignore_ascii_case(active))
+            .map(|profile| profile.availability);
+        if active.eq_ignore_ascii_case("off") {
+            details.push(format!("{}: {active}", display_card_name(card)));
+        } else {
+            match active_availability {
+                Some(AudioAvailability::Yes) => {
+                    details.push(format!("{}: {active}", display_card_name(card)));
+                }
+                None if card.profiles.is_empty() => {
+                    details.push(format!("{}: {active}", display_card_name(card)));
+                }
+                Some(availability) => {
+                    profile_state_unknown = true;
+                    details.push(format!(
+                        "{}: {active} (provider reports active profile availability as {availability:?})",
+                        display_card_name(card)
+                    ));
+                }
+                None => {
+                    profile_state_unknown = true;
+                    details.push(format!(
+                        "{}: {active} (active profile was not present in the provider's profile inventory)",
+                        display_card_name(card)
+                    ));
+                }
+            }
+        }
         let profiles = card
             .profiles
             .iter()
@@ -1295,7 +1325,11 @@ fn endpoint_evidence(endpoint: &AudioEndpoint) -> Evidence {
         "Audio endpoint",
         format!(
             "{}; state: {:?}; muted: {}; {}; {}.",
-            safe_endpoint_name(&endpoint.name), endpoint.state, mute_state, volume, spec
+            safe_endpoint_name(&endpoint.name),
+            endpoint.state,
+            mute_state,
+            volume,
+            spec
         ),
     )
 }
@@ -1406,18 +1440,67 @@ fn append_bluetooth_audio_diagnostics(
         .iter()
         .filter(|card| card.active_profile.is_none())
         .count();
+    let active_profile_unavailable = bluetooth_cards
+        .iter()
+        .filter(|card| {
+            let Some(active) = card.active_profile.as_deref() else {
+                return false;
+            };
+            if active.eq_ignore_ascii_case("off") {
+                return false;
+            }
+            card.profiles.iter().any(|profile| {
+                profile.name.eq_ignore_ascii_case(active)
+                    && profile.availability == AudioAvailability::No
+            })
+        })
+        .count();
+    let active_profile_unresolved = bluetooth_cards
+        .iter()
+        .filter(|card| {
+            let Some(active) = card.active_profile.as_deref() else {
+                return false;
+            };
+            if active.eq_ignore_ascii_case("off") || card.profiles.is_empty() {
+                return false;
+            }
+            !card.profiles.iter().any(|profile| {
+                profile.name.eq_ignore_ascii_case(active)
+                    && profile.availability == AudioAvailability::Yes
+            })
+        })
+        .count();
     // `off` is a real observed state, but not proof of failure: BlueZ audio
-    // cards often remain registered after a headset disconnects. The
-    // independent Bluetooth report carries pairing/connection state.
+    // cards often remain registered after a headset disconnects. An active
+    // profile reported unavailable is contradictory provider data, not proof
+    // that the profile or device is broken.
     let status = if disabled_count == bluetooth_cards.len() && unknown_count == 0 {
         DiagnosticStatus::NotApplicable
-    } else if disabled_count > 0 || unknown_count > 0 {
+    } else if disabled_count > 0
+        || unknown_count > 0
+        || active_profile_unavailable > 0
+        || active_profile_unresolved > 0
+    {
         DiagnosticStatus::Unknown
     } else {
         DiagnosticStatus::Pass
     };
+    let conflict_note = if active_profile_unavailable > 0 {
+        format!(
+            " The provider reports the currently active profile as unavailable on {active_profile_unavailable} card(s), which is internally inconsistent; PRYN leaves that state unresolved instead of claiming success or a hardware fault."
+        )
+    } else {
+        String::new()
+    };
+    let unresolved_note = if active_profile_unresolved > 0 && active_profile_unavailable == 0 {
+        format!(
+            " The active profile's availability could not be confirmed on {active_profile_unresolved} card(s)."
+        )
+    } else {
+        String::new()
+    };
     let summary = format!(
-        "The audio provider exposed {} Bluetooth audio card(s): {}. An `off` profile is reported without assuming a fault because the device may be disconnected; check the Bluetooth connection state separately.",
+        "The audio provider exposed {} Bluetooth audio card(s): {}. An `off` profile is reported without assuming a fault because the device may be disconnected; check the Bluetooth connection state separately.{conflict_note}{unresolved_note}",
         bluetooth_cards.len(),
         profiles.join("; ")
     );
@@ -1432,11 +1515,11 @@ fn append_bluetooth_audio_diagnostics(
                 Evidence::new(
                     "Audio server",
                     format!(
-                        "Bluetooth audio profile: {}; available profiles: {}.",
+                        "Bluetooth audio profile: {}; profile availability: {}.",
                         card.active_profile.as_deref().unwrap_or("unknown"),
                         card.profiles
                             .iter()
-                            .map(|profile| profile.name.as_str())
+                            .map(|profile| format!("{}={:?}", profile.name, profile.availability))
                             .collect::<Vec<_>>()
                             .join(", ")
                     ),
@@ -1552,10 +1635,12 @@ mod tests {
     fn native_pipewire_is_used_when_no_pulseaudio_compatible_socket_exists() {
         use crate::platform::linux::pipewire::PipeWireSnapshot;
 
-        let mut graph = PipeWireSnapshot::default();
-        graph.core_name = Some("pipewire-0".to_owned());
-        graph.core_version = Some("1.6.10".to_owned());
-        graph.default_sink_name = Some("speaker".to_owned());
+        let mut graph = PipeWireSnapshot {
+            core_name: Some("pipewire-0".to_owned()),
+            core_version: Some("1.6.10".to_owned()),
+            default_sink_name: Some("speaker".to_owned()),
+            ..PipeWireSnapshot::default()
+        };
         graph.sinks.push(endpoint("speaker", false, 0.75));
         graph.default_source_name = Some("mic".to_owned());
         graph.sources.push(AudioSource {
@@ -1619,6 +1704,28 @@ mod tests {
                 .findings
                 .iter()
                 .any(|finding| finding.code == "AUDIO-002")
+        );
+    }
+
+    #[test]
+    fn low_nonzero_output_volume_is_reported_as_five_percent_not_zero() {
+        let report = evaluate_snapshot(
+            hardware_snapshot(),
+            Ok(server_snapshot(endpoint("speaker", false, 0.05))),
+        );
+        let volume_check = report
+            .checks
+            .iter()
+            .find(|check| check.id == "audio.output.volume")
+            .expect("default output volume check should exist");
+
+        assert_eq!(volume_check.status, DiagnosticStatus::Pass);
+        assert!(volume_check.summary.contains("5%"));
+        assert!(
+            !report
+                .findings
+                .iter()
+                .any(|finding| finding.code == "AUDIO-003")
         );
     }
 
@@ -1708,7 +1815,11 @@ mod tests {
 
     #[test]
     fn bluetooth_audio_cards_are_detected_without_exposing_device_addresses() {
-        let mut snapshot = server_snapshot(endpoint("bluez_output.AA_BB_CC_DD_EE_FF.a2dp-sink", false, 1.0));
+        let mut snapshot = server_snapshot(endpoint(
+            "bluez_output.AA_BB_CC_DD_EE_FF.a2dp-sink",
+            false,
+            1.0,
+        ));
         if let Some(cards) = snapshot.cards.as_mut() {
             cards[0].name = "bluez_card.AA_BB_CC_DD_EE_FF".to_owned();
             cards[0].device_api = Some("bluez5".to_owned());
@@ -1724,8 +1835,7 @@ mod tests {
         assert_eq!(bluetooth_check.status, DiagnosticStatus::Pass);
         assert!(!bluetooth_check.summary.contains("AA_BB_CC_DD_EE_FF"));
         assert!(report.checks.iter().any(|check| {
-            check.id == "audio.output.default"
-                && !check.summary.contains("AA_BB_CC_DD_EE_FF")
+            check.id == "audio.output.default" && !check.summary.contains("AA_BB_CC_DD_EE_FF")
         }));
     }
 
@@ -1750,9 +1860,131 @@ mod tests {
             .expect("Bluetooth profile check should exist");
 
         assert_eq!(bluetooth_check.status, DiagnosticStatus::NotApplicable);
-        assert!(!report.findings.iter().any(|finding| {
-            finding.code == "AUDIO-008"
-        }));
+        assert!(
+            !report
+                .findings
+                .iter()
+                .any(|finding| { finding.code == "AUDIO-008" })
+        );
+    }
+
+    #[test]
+    fn active_profile_reported_unavailable_is_not_misreported_as_a_pass() {
+        use crate::platform::linux::audio_server::{AudioAvailability, AudioProfile};
+
+        let mut snapshot = server_snapshot(endpoint("speaker", false, 1.0));
+        if let Some(cards) = snapshot.cards.as_mut() {
+            cards[0].profiles = vec![AudioProfile {
+                name: "analog-stereo".to_owned(),
+                description: Some("Analog Stereo".to_owned()),
+                availability: AudioAvailability::No,
+                playback_endpoints: 1,
+                capture_endpoints: 1,
+            }];
+        }
+
+        let report = evaluate_snapshot(hardware_snapshot(), Ok(snapshot));
+        let profile_check = report
+            .checks
+            .iter()
+            .find(|check| check.id == "audio.card.profiles")
+            .expect("card profile check should exist");
+
+        assert_eq!(profile_check.status, DiagnosticStatus::Unknown);
+        assert!(profile_check.summary.contains("availability as No"));
+        assert!(report.findings.is_empty());
+    }
+
+    #[test]
+    fn active_profile_with_unknown_availability_is_not_misreported_as_a_pass() {
+        use crate::platform::linux::audio_server::{AudioAvailability, AudioProfile};
+
+        let mut snapshot = server_snapshot(endpoint("speaker", false, 1.0));
+        if let Some(cards) = snapshot.cards.as_mut() {
+            cards[0].profiles = vec![AudioProfile {
+                name: "analog-stereo".to_owned(),
+                description: Some("Analog Stereo".to_owned()),
+                availability: AudioAvailability::Unknown,
+                playback_endpoints: 1,
+                capture_endpoints: 1,
+            }];
+        }
+
+        let report = evaluate_snapshot(hardware_snapshot(), Ok(snapshot));
+        let profile_check = report
+            .checks
+            .iter()
+            .find(|check| check.id == "audio.card.profiles")
+            .expect("card profile check should exist");
+
+        assert_eq!(profile_check.status, DiagnosticStatus::Unknown);
+        assert!(profile_check.summary.contains("availability as Unknown"));
+        assert!(report.findings.is_empty());
+    }
+
+    #[test]
+    fn active_bluetooth_a2dp_profile_reported_unavailable_is_left_unresolved() {
+        use crate::platform::linux::audio_server::{AudioAvailability, AudioProfile};
+
+        let mut snapshot = server_snapshot(endpoint(
+            "bluez_output.AA_BB_CC_DD_EE_FF.a2dp-sink",
+            false,
+            1.0,
+        ));
+        if let Some(cards) = snapshot.cards.as_mut() {
+            cards[0].name = "bluez_card.AA_BB_CC_DD_EE_FF".to_owned();
+            cards[0].device_api = Some("bluez5".to_owned());
+            cards[0].active_profile = Some("a2dp-sink".to_owned());
+            cards[0].profiles = vec![AudioProfile {
+                name: "a2dp-sink".to_owned(),
+                description: Some("High Fidelity Playback".to_owned()),
+                availability: AudioAvailability::No,
+                playback_endpoints: 1,
+                capture_endpoints: 0,
+            }];
+        }
+
+        let report = evaluate_snapshot(hardware_snapshot(), Ok(snapshot));
+        let bluetooth_check = report
+            .checks
+            .iter()
+            .find(|check| check.id == "audio.bluetooth.profile")
+            .expect("Bluetooth profile check should exist");
+
+        assert_eq!(bluetooth_check.status, DiagnosticStatus::Unknown);
+        assert!(bluetooth_check.summary.contains("internally inconsistent"));
+        assert!(!bluetooth_check.summary.contains("AA_BB_CC_DD_EE_FF"));
+        assert!(report.findings.is_empty());
+    }
+
+    #[test]
+    fn active_bluetooth_profile_with_unknown_availability_is_not_reported_as_healthy() {
+        use crate::platform::linux::audio_server::{AudioAvailability, AudioProfile};
+
+        let mut snapshot = server_snapshot(endpoint("speaker", false, 1.0));
+        if let Some(cards) = snapshot.cards.as_mut() {
+            cards[0].name = "bluez_card.AA_BB_CC_DD_EE_FF".to_owned();
+            cards[0].device_api = Some("bluez5".to_owned());
+            cards[0].active_profile = Some("a2dp-sink".to_owned());
+            cards[0].profiles = vec![AudioProfile {
+                name: "a2dp-sink".to_owned(),
+                description: Some("High Fidelity Playback".to_owned()),
+                availability: AudioAvailability::Unknown,
+                playback_endpoints: 1,
+                capture_endpoints: 0,
+            }];
+        }
+
+        let report = evaluate_snapshot(hardware_snapshot(), Ok(snapshot));
+        let bluetooth_check = report
+            .checks
+            .iter()
+            .find(|check| check.id == "audio.bluetooth.profile")
+            .expect("Bluetooth profile check should exist");
+
+        assert_eq!(bluetooth_check.status, DiagnosticStatus::Unknown);
+        assert!(report.findings.is_empty());
+        assert!(!bluetooth_check.summary.contains("AA_BB_CC_DD_EE_FF"));
     }
 
     #[test]

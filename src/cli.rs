@@ -1,21 +1,22 @@
 use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use thiserror::Error;
 use tracing_subscriber::EnvFilter;
 
 use crate::app;
-use crate::model::Subsystem;
-use crate::report::{render_human, render_json};
+use crate::model::{DiagnosticStatus, Subsystem};
+use crate::report::{render_human_with_options, render_json};
 
 #[derive(Debug, Parser)]
 #[command(
     name = "pryn",
     version,
     about = "Check Wi-Fi, Bluetooth, and audio on Linux",
-    long_about = "PRYN checks your Linux system and explains what it finds. It only reads system information and does not change system settings."
+    long_about = "PRYN checks your Linux system and explains what it finds. It only reads system information and does not change system settings. Use --verbose to include every check and supporting evidence in text output."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -33,6 +34,10 @@ struct CheckArgs {
     /// Check only one area. Omit this argument to check all supported areas.
     #[arg(value_enum)]
     subsystem: Option<SubsystemArgument>,
+
+    /// Include every check and supporting evidence in text output (ignored for JSON).
+    #[arg(short, long)]
+    verbose: bool,
 
     /// Choose how PRYN displays the results.
     #[arg(long, value_enum, default_value = "text")]
@@ -89,7 +94,7 @@ pub enum CliError {
     },
 }
 
-pub fn run() -> Result<(), CliError> {
+pub fn run() -> Result<ExitCode, CliError> {
     initialize_logging();
     let cli = Cli::parse();
 
@@ -97,15 +102,15 @@ pub fn run() -> Result<(), CliError> {
         let mut command = Cli::command();
         command.print_help()?;
         println!();
-        return Ok(());
+        return Ok(ExitCode::SUCCESS);
     };
 
-    match command {
+    let exit_code = match command {
         Commands::Check(args) => {
             let target = args.subsystem.map(Subsystem::from);
             let report = app::check(target);
             let output = match args.format {
-                OutputFormat::Text => render_human(&report),
+                OutputFormat::Text => render_human_with_options(&report, args.verbose),
                 OutputFormat::Json => render_json(&report)?,
             };
 
@@ -116,10 +121,23 @@ pub fn run() -> Result<(), CliError> {
                     io::stdout().flush().map_err(CliError::HelpOutput)?;
                 }
             }
-        }
-    }
 
-    Ok(())
+            exit_code_for_status(report.overall_status)
+        }
+    };
+
+    Ok(exit_code)
+}
+
+fn exit_code_for_status(status: DiagnosticStatus) -> ExitCode {
+    match status {
+        DiagnosticStatus::Pass | DiagnosticStatus::NotApplicable => ExitCode::SUCCESS,
+        DiagnosticStatus::Warning
+        | DiagnosticStatus::Problem
+        | DiagnosticStatus::Unknown
+        | DiagnosticStatus::Partial
+        | DiagnosticStatus::NotImplemented => ExitCode::from(1),
+    }
 }
 
 fn initialize_logging() {
@@ -165,4 +183,36 @@ fn write_report(path: &Path, contents: &str, force: bool) -> Result<(), CliError
     })?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::exit_code_for_status;
+    use crate::model::DiagnosticStatus;
+    use std::process::ExitCode;
+
+    #[test]
+    fn completed_clean_reports_return_zero() {
+        assert_eq!(
+            exit_code_for_status(DiagnosticStatus::Pass),
+            ExitCode::SUCCESS
+        );
+        assert_eq!(
+            exit_code_for_status(DiagnosticStatus::NotApplicable),
+            ExitCode::SUCCESS
+        );
+    }
+
+    #[test]
+    fn findings_and_incomplete_reports_return_one() {
+        for status in [
+            DiagnosticStatus::Warning,
+            DiagnosticStatus::Problem,
+            DiagnosticStatus::Unknown,
+            DiagnosticStatus::Partial,
+            DiagnosticStatus::NotImplemented,
+        ] {
+            assert_eq!(exit_code_for_status(status), ExitCode::from(1));
+        }
+    }
 }

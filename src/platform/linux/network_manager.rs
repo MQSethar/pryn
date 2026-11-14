@@ -6,7 +6,7 @@
 
 use std::time::Duration;
 
-use zbus::blocking::{Proxy, connection::Builder as ConnectionBuilder};
+use zbus::blocking::{Proxy, connection::Builder as ConnectionBuilder, fdo::ObjectManagerProxy};
 use zbus::zvariant::OwnedObjectPath;
 
 const DBUS_SERVICE: &str = "org.freedesktop.DBus";
@@ -19,6 +19,8 @@ const NETWORK_MANAGER_INTERFACE: &str = "org.freedesktop.NetworkManager";
 const NETWORK_MANAGER_DEVICE_INTERFACE: &str = "org.freedesktop.NetworkManager.Device";
 
 const IWD_SERVICE: &str = "net.connman.iwd";
+const IWD_DEVICE_INTERFACE: &str = "net.connman.iwd.Device";
+const IWD_STATION_INTERFACE: &str = "net.connman.iwd.Station";
 const WIFI_DEVICE_TYPE: u32 = 2;
 const DBUS_METHOD_TIMEOUT: Duration = Duration::from_secs(3);
 
@@ -27,14 +29,35 @@ const DBUS_METHOD_TIMEOUT: Duration = Duration::from_secs(3);
 pub enum WifiManagerProbe {
     /// NetworkManager was present and a snapshot was collected.
     NetworkManager(NetworkManagerSnapshot),
-    /// iwd was present, but direct iwd inspection is not implemented yet.
-    IwdDetected,
+    /// iwd was present and its read-only device/station state was collected.
+    Iwd(IwdSnapshot),
     /// Neither NetworkManager nor iwd owned its well-known system-bus name.
     NoKnownManager,
     /// PRYN could not connect to the system D-Bus.
     SystemBusUnavailable,
     /// The system bus was reachable, but its service state could not be queried.
     QueryFailed,
+}
+
+/// Read-only state returned by standalone iwd.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct IwdSnapshot {
+    pub devices_query_succeeded: bool,
+    pub wifi_devices: Vec<IwdWifiDevice>,
+    /// Human-safe descriptions of incomplete property reads.
+    pub warnings: Vec<String>,
+}
+
+/// State for one iwd-managed wireless station.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IwdWifiDevice {
+    pub interface: Option<String>,
+    pub powered: Option<bool>,
+    /// iwd Device.Mode: station, ap, or ad-hoc.
+    pub mode: Option<String>,
+    /// iwd Station.State: connected, disconnected, connecting, disconnecting, or roaming.
+    pub station_state: Option<String>,
+    pub scanning: Option<bool>,
 }
 
 /// NetworkManager's view of system-wide connectivity.
@@ -163,7 +186,7 @@ pub fn collect_wifi_state() -> WifiManagerProbe {
 
     if !network_manager_present {
         return match name_has_owner(&bus_proxy, IWD_SERVICE) {
-            Ok(true) => WifiManagerProbe::IwdDetected,
+            Ok(true) => collect_iwd_snapshot(&connection),
             Ok(false) => WifiManagerProbe::NoKnownManager,
             Err(error) => {
                 tracing::debug!(error = %error, "could not check iwd service ownership");
@@ -285,6 +308,94 @@ fn collect_network_manager_snapshot(connection: &zbus::blocking::Connection) -> 
     WifiManagerProbe::NetworkManager(snapshot)
 }
 
+fn collect_iwd_snapshot(connection: &zbus::blocking::Connection) -> WifiManagerProbe {
+    let object_manager = match ObjectManagerProxy::new(connection, IWD_SERVICE, "/") {
+        Ok(proxy) => proxy,
+        Err(error) => {
+            tracing::debug!(error = %error, "could not create the iwd ObjectManager proxy");
+            return WifiManagerProbe::QueryFailed;
+        }
+    };
+
+    let managed_objects = match object_manager.get_managed_objects() {
+        Ok(objects) => objects,
+        Err(error) => {
+            tracing::debug!(error = %error, "iwd GetManagedObjects call failed");
+            return WifiManagerProbe::QueryFailed;
+        }
+    };
+
+    let mut snapshot = IwdSnapshot {
+        devices_query_succeeded: true,
+        ..IwdSnapshot::default()
+    };
+
+    for (path, interfaces) in managed_objects {
+        let has_device = interfaces
+            .keys()
+            .any(|name| name.as_str() == IWD_DEVICE_INTERFACE);
+        if !has_device {
+            continue;
+        }
+
+        let device_proxy =
+            match Proxy::new(connection, IWD_SERVICE, path.as_str(), IWD_DEVICE_INTERFACE) {
+                Ok(proxy) => proxy,
+                Err(error) => {
+                    tracing::debug!(error = %error, "could not create an iwd device proxy");
+                    snapshot
+                        .warnings
+                        .push("An iwd wireless device could not be inspected.".to_owned());
+                    continue;
+                }
+            };
+
+        let interface = read_string_property(&device_proxy, "Name", &mut snapshot.warnings);
+        let powered = read_bool_property(&device_proxy, "Powered", &mut snapshot.warnings);
+        let mode = read_string_property(&device_proxy, "Mode", &mut snapshot.warnings);
+
+        let has_station = interfaces
+            .keys()
+            .any(|name| name.as_str() == IWD_STATION_INTERFACE);
+        let (station_state, scanning) = if has_station {
+            match Proxy::new(
+                connection,
+                IWD_SERVICE,
+                path.as_str(),
+                IWD_STATION_INTERFACE,
+            ) {
+                Ok(station_proxy) => (
+                    read_string_property(&station_proxy, "State", &mut snapshot.warnings),
+                    read_bool_property(&station_proxy, "Scanning", &mut snapshot.warnings),
+                ),
+                Err(error) => {
+                    tracing::debug!(error = %error, "could not create an iwd station proxy");
+                    snapshot
+                        .warnings
+                        .push("An iwd station state could not be inspected.".to_owned());
+                    (None, None)
+                }
+            }
+        } else {
+            (None, None)
+        };
+
+        snapshot.wifi_devices.push(IwdWifiDevice {
+            interface,
+            powered,
+            mode,
+            station_state,
+            scanning,
+        });
+    }
+
+    snapshot
+        .wifi_devices
+        .sort_by(|left, right| left.interface.cmp(&right.interface));
+
+    WifiManagerProbe::Iwd(snapshot)
+}
+
 fn read_bool_property(
     proxy: &Proxy<'_>,
     property: &str,
@@ -293,9 +404,9 @@ fn read_bool_property(
     match proxy.get_property::<bool>(property) {
         Ok(value) => Some(value),
         Err(error) => {
-            tracing::debug!(property, error = %error, "NetworkManager boolean property unavailable");
+            tracing::debug!(property, error = %error, "Wi-Fi manager boolean property unavailable");
             warnings.push(format!(
-                "NetworkManager property `{property}` could not be read."
+                "Wi-Fi manager property `{property}` could not be read."
             ));
             None
         }
@@ -311,9 +422,9 @@ fn read_string_property(
         Ok(value) if !value.trim().is_empty() => Some(value),
         Ok(_) => None,
         Err(error) => {
-            tracing::debug!(property, error = %error, "NetworkManager string property unavailable");
+            tracing::debug!(property, error = %error, "Wi-Fi manager string property unavailable");
             warnings.push(format!(
-                "NetworkManager property `{property}` could not be read."
+                "Wi-Fi manager property `{property}` could not be read."
             ));
             None
         }
@@ -324,9 +435,9 @@ fn read_u32_property(proxy: &Proxy<'_>, property: &str, warnings: &mut Vec<Strin
     match proxy.get_property::<u32>(property) {
         Ok(value) => Some(value),
         Err(error) => {
-            tracing::debug!(property, error = %error, "NetworkManager integer property unavailable");
+            tracing::debug!(property, error = %error, "Wi-Fi manager integer property unavailable");
             warnings.push(format!(
-                "NetworkManager property `{property}` could not be read."
+                "Wi-Fi manager property `{property}` could not be read."
             ));
             None
         }
