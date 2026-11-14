@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-11-15
 
 - Replace the placeholder binary with a structured `check` command.
 - Add shared report models and versioned JSON output.
