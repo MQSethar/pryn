@@ -1,13 +1,41 @@
-# Support matrix (v0.1)
+# Support matrix
 
-PRYN targets Linux. Core hardware discovery uses Linux kernel interfaces. Service-level checks are capability-based and depend on the service and optional inspection tools being present in the current user session.
+PRYN targets Linux. The x86_64 musl executable is designed to avoid a runtime
+dependency on the host glibc or other shared libraries. Service-level checks
+remain capability-based and depend on the service and optional inspection
+tools being present in the current user session.
 
-| Environment | Build target | Wi-Fi support | Bluetooth support | Audio support |
-|---|---|---|---|---|
-| Arch Linux x86_64 | Primary development target | sysfs/rfkill, NetworkManager or standalone iwd D-Bus state, and optional iproute2 address/route inspection plus `/etc/resolv.conf` DNS configuration | sysfs/rfkill plus BlueZ system D-Bus adapter, pairing, and connection-state inspection | ALSA discovery; PulseAudio-compatible protocol inspection; native graph inspection when `pw-dump` is installed |
-| Ubuntu x86_64 | CI build target; runtime validation required | sysfs/rfkill, NetworkManager or standalone iwd D-Bus state, and optional iproute2 address/route inspection plus `/etc/resolv.conf` DNS configuration | sysfs/rfkill plus BlueZ system D-Bus adapter, pairing, and connection-state inspection | ALSA discovery; PulseAudio-compatible protocol inspection; native PipeWire graph inspection when available |
-| Other Linux distributions | Not yet validated | Best effort where Linux interfaces, NetworkManager or iwd D-Bus, and optional iproute2 are available | sysfs/rfkill plus best-effort BlueZ system D-Bus inspection | Best-effort ALSA; PulseAudio-compatible socket and optional native PipeWire `pw-dump` providers |
-| Non-systemd Linux | Not yet validated | NetworkManager and iwd D-Bus can work independently of systemd; runtime paths remain unverified | sysfs/rfkill plus best-effort BlueZ system D-Bus inspection | PulseAudio-compatible socket provider and PipeWire `pw-dump` provider do not require systemd, but runtime support is not yet validated |
-| aarch64 Linux | Not yet validated | Not yet claimed | Not yet claimed | Not yet claimed |
+## Real-machine validation
 
-A successful build on a distribution is not proof that its service configuration is supported. The standalone iwd implementation is present, but the supplied runtime logs exercise NetworkManager only; validate iwd on a separate iwd-managed host before claiming that path runtime-tested. Update this matrix only after real testing on that environment. Native PulseAudio and PipeWire are separate providers; PipeWire's PulseAudio-compatible service is also supported through the common PulseAudio client protocol. Standalone iwd Device/Station state is read through its system-bus ObjectManager; NetworkManager remains preferred when present. Active internet reachability tests are not supported in the first MVP. The `ip` command is optional: when it is absent, IP-address and default-route results remain unknown rather than being reported as successful.
+| Environment | Architecture | Status | Notes |
+|---|---|---|---|
+| Arch Linux | x86_64 | Runtime tested | Wi-Fi, BlueZ and PipeWire inspected on maintainer hardware. |
+| Ubuntu 26.04 | x86_64 | Runtime tested | NetworkManager, BlueZ and PipeWire inspected on a real machine. |
+| Kali Rolling | x86_64 | Runtime tested | NetworkManager and audio inspected; BlueZ was not running and correctly reported unavailable. |
+| Debian 13 | x86_64 | Pending | Package/container smoke test is not physical hardware validation. |
+| Fedora | x86_64 | Pending | Package/container smoke test is not physical hardware validation. |
+| Alpine | x86_64 | Pending | Static-musl startup smoke test; host service integrations need separate testing. |
+| AArch64 Linux | aarch64 | Not supported yet | Deferred until a test device and user demand exist. |
+
+## Distribution artifacts
+
+| Artifact | Ecosystem | Architecture | Runtime shared-library requirement |
+|---|---|---|---|
+| Static musl tarball | Generic Linux | x86_64 | None expected; verified by ELF inspection and container smoke tests. |
+| `.deb` | Debian, Ubuntu, Kali and derivatives | amd64 | None declared; contains the same static musl executable. |
+| `.rpm` | Fedora, RHEL-compatible, openSUSE | x86_64 | None declared; contains the same static musl executable. |
+| `pryn-bin` | Arch AUR | x86_64 | None; installs the same static musl executable. |
+| crates.io source package | Rust/Cargo | Host target | Requires Rust/Cargo to compile. |
+
+## Runtime capability requirements
+
+- Wi-Fi manager state: NetworkManager or standalone iwd over system D-Bus.
+- Bluetooth adapter and device state: BlueZ over system D-Bus.
+- Audio endpoint details: ALSA discovery and a PulseAudio-compatible user socket; native PipeWire graph details are enhanced by optional `pw-dump`.
+- IP addresses and routes: optional `ip` from iproute2; without it, those observations remain unknown.
+- DNS configuration: `/etc/resolv.conf`.
+
+PRYN does not install, enable, start, restart, or configure these services. An
+absent service is an unavailable diagnostic capability, not a package install
+failure. A passing container smoke test confirms executable/package startup,
+not working physical radios, speakers, microphones, or internet reachability.

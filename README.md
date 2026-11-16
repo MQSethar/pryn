@@ -1,152 +1,147 @@
 # PRYN
 
-**Simple system checks for Linux.**
+**Read-only Linux diagnostics for Wi-Fi, Bluetooth, and audio.**
 
-PRYN checks Wi-Fi, Bluetooth, and audio. It shows what it can confirm, explains what may be wrong, and suggests safe next steps. Checks are read-only: PRYN does not change device settings, restart services, play test audio, or record microphone audio.
+PRYN checks what Linux exposes, explains what it can confirm, and suggests safe
+next steps. It does not change device settings, restart services, pair
+Bluetooth devices, play test audio, or record microphone audio.
 
-> **Development status:** first read-only CLI MVP. PRYN inspects Wi-Fi hardware and either NetworkManager or standalone iwd state, global IP addresses on wireless interfaces, system default routes, resolver configuration, BlueZ adapter/device state, and ALSA/PulseAudio/PipeWire audio configuration. Final release validation still requires running the verification suite and exercising the iwd and audio paths on real hardware.
+## Install
 
-## What works today
-
-- Finds wireless network interfaces and checks their link state.
-- Checks whether Wi-Fi or Bluetooth radios are blocked.
-- Reads NetworkManager over the system D-Bus without changing settings.
-- Reads NetworkManager's last connectivity result only when its check is configured and enabled; the result is system-wide, may be stale, and is not Wi-Fi-specific.
-- Checks NetworkManager's global networking state, Wi-Fi software/hardware switches, managed adapter state, and selected firmware/plugin signals. With standalone iwd, checks the per-device power and Station.State properties that iwd exposes.
-- Inspects global IPv4/IPv6 addresses on discovered Wi-Fi interfaces, system IPv4/IPv6 default routes, and configured DNS nameservers. Address and route inspection uses the optional `ip` command from iproute2; DNS configuration is read from `/etc/resolv.conf`. These checks confirm configuration, not internet reachability.
-- Reads standalone iwd Device and Station properties over the system D-Bus ObjectManager when NetworkManager is not running; reports interface power and station connection state without scanning, connecting, or exposing network names.
-- Finds Bluetooth controllers and ALSA sound cards.
-- Reads BlueZ's system D-Bus ObjectManager snapshot to inspect adapter power, discovery/visibility state, and paired, trusted, blocked, and connected device state.
-- Distinguishes controller detection, BlueZ service availability, adapter power, device pairing, and active connections instead of treating them as one Boolean.
-- Does not initiate Bluetooth discovery, pairing, connection, or configuration changes; device addresses are not included in diagnostic output.
-- Inspects native PulseAudio and PipeWire's PulseAudio-compatible service over the user-session Unix socket using a pure-Rust protocol implementation.
-- Inspects native PipeWire Core, audio Nodes, Devices, and default routing metadata from the documented `pw-dump` JSON output when `pw-dump` is installed.
-- Checks playback and non-monitor capture endpoints, default endpoint selection, mute state, channel volume, sample format, sample rate, and channel count.
-- Inspects available card profiles and selected ports when the active audio provider exposes them, including Bluetooth audio cards and their active profiles. Conflicting provider data (for example, an active profile simultaneously marked unavailable) remains unresolved instead of being reported as healthy or broken.
-- Treats suspended audio endpoints as normally idle, not as failed devices.
-- Excludes playback monitor sources from capture-device counts. Other sources are not automatically assumed to be physical microphones.
-- Shows a concise terminal summary by default, includes all checks and evidence with `--verbose`, or saves results as schema-versioned JSON.
-- Uses exit code `0` for clean completed checks, `1` when a report contains warnings/problems/unknown or incomplete checks, and `2` for execution/output errors.
-- Runs without root privileges. PRYN does not send test audio, record audio, or enumerate application stream names during `pryn check audio`.
-
-## MVP boundaries
-
-- NetworkManager is preferred when available. Standalone iwd is also inspected through its read-only Device and Station D-Bus interfaces; NetworkManager-managed iwd continues to use NetworkManager as the manager-facing API.
-- PRYN reads configured IP addresses, default routes, and DNS settings. It does not send DNS queries, ping hosts, or make HTTP requests to prove reachability.
-- Audio checks inspect configured endpoints, profiles, mute/volume state, and the PipeWire graph. They do not play test audio or record microphone input, so a passing configuration check does not prove that sound is physically audible or that a microphone captures intelligible audio. When the provider cannot report jack/port availability, PRYN reports `unknown`; it does not guess.
-- Bluetooth checks inspect the kernel controller, rfkill, BlueZ adapters/devices, and exposed audio profiles. They do not initiate discovery, pairing, or connections.
-- No TUI, background daemon, auto-repair, telemetry, or privileged repair actions are included in the first MVP.
-
-## Requirements for building PRYN
-
-- Linux (x86_64 is the initial development target).
-- The Rust version listed in `rust-toolchain.toml`.
-- Cargo (installed with Rustup).
-
-## Optional audio runtime tools
-
-- A local PulseAudio-compatible Unix socket is used for endpoint, volume, mute, format, port, and profile details. This works with native PulseAudio and PipeWire's `pipewire-pulse` compatibility service.
-- `pw-dump` is optional and provides additional native PipeWire graph inspection through structured JSON. PRYN invokes it directly without a shell, applies a three-second timeout, caps collected output at 8 MiB, and retains only audio-device objects and default routing metadata.
-- ALSA hardware discovery continues to work even when neither audio server is available.
-
-## Install PRYN
+PRYN v0.1.0 is available from crates.io and as an x86_64 GNU/Linux GitHub
+release archive. The next distribution release (v0.1.1) adds a static x86_64
+musl archive, a Debian-family `.deb`, an RPM-family `.rpm`, and a generated Arch
+AUR binary recipe. These packages contain the same executable; there are no
+separate Ubuntu/Kali/Debian/Fedora binaries.
 
 ### From crates.io
 
-After the first release is published:
+This compiles PRYN and therefore requires Rust and Cargo:
 
 ```bash
 cargo install pryn --locked
 ```
 
-### From a GitHub release
+### From a GitHub release archive
 
-Download the `pryn-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz` archive and its `SHA256SUMS` file from [GitHub Releases](https://github.com/MQSethar/pryn/releases). Verify the archive before extracting it:
+Download the x86_64 Linux archive and `SHA256SUMS` from
+[GitHub Releases](https://github.com/MQSethar/pryn/releases). Verify the
+checksum before extracting. The v0.1.0 archive is GNU-linked; the static musl
+archive is introduced in v0.1.1.
 
 ```bash
 sha256sum --check SHA256SUMS
-tar -xzf pryn-vX.Y.Z-x86_64-unknown-linux-gnu.tar.gz
-install -Dm755 pryn-vX.Y.Z/pryn ~/.local/bin/pryn
+tar -xzf pryn-vVERSION-x86_64-unknown-linux-musl.tar.gz
+install -Dm755 pryn-vVERSION/pryn ~/.local/bin/pryn
 ```
 
-Ensure `~/.local/bin` is in your `PATH`. The first binary release targets x86_64 Linux with GNU libc; other architectures and non-glibc environments are not claimed yet.
+Ensure `~/.local/bin` is in `PATH`.
 
-### Build from source
+### Debian, Ubuntu, Kali, and derivatives (v0.1.1+)
+
+Download the `.deb` asset and install it with:
+
+```bash
+sudo apt install ./pryn_VERSION_amd64.deb
+```
+
+One amd64 package is intended for compatible Debian-family distributions. It
+is a direct-download package; a hosted signed APT repository is not provided
+in the initial distribution release.
+
+### Fedora, RHEL-compatible, and openSUSE (v0.1.1+)
+
+Download the `.rpm` asset and install it with:
+
+```bash
+sudo dnf install --nogpgcheck ./pryn-VERSION-1.x86_64.rpm
+```
+
+For openSUSE, use `zypper install ./pryn-VERSION-1.x86_64.rpm`. The initial
+RPM is unsigned; the flag is required for local installation until signed
+repositories are introduced.
+
+### Arch Linux (v0.1.1+, after AUR submission)
+
+```bash
+yay -S pryn-bin
+```
+
+`pryn-bin` is a community AUR package, not an official Arch repository package.
+
+## Runtime independence
+
+Prebuilt static musl packages do not require Rust, Cargo, a compiler, glibc,
+libgcc, or other shared runtime libraries. They target x86_64 Linux. AArch64
+is deferred until there is demand and a test device.
+
+PRYN inspects optional host services; it does not install or manage them:
+
+- NetworkManager or standalone iwd for Wi-Fi manager state;
+- BlueZ for Bluetooth state;
+- ALSA and a PulseAudio-compatible socket for audio details;
+- `pw-dump` for additional native PipeWire graph inspection (optional);
+- `ip` from iproute2 for IP address and route inspection (optional).
+
+If a service or optional utility is missing, the related result is unavailable
+or unknown. This does not prevent installation or execution. PRYN never
+requires root privileges for its supported checks.
+
+## What PRYN checks
+
+- Wireless interfaces, drivers, carrier state, rfkill, NetworkManager or iwd
+  state, IP addresses, default routes, and configured DNS servers.
+- Bluetooth controllers, rfkill, BlueZ service, adapter power/visibility,
+  paired devices, and connection state.
+- ALSA cards, PulseAudio/PipeWire server state, playback and capture endpoints,
+  defaults, mute/volume/channel state, formats, ports, and exposed profiles.
+- Human-readable summaries, detailed evidence with `--verbose`, and
+  schema-versioned JSON output.
+
+PRYN does not perform active internet reachability tests. Audio configuration
+does not prove sound is physically audible or microphone capture is
+intelligible. Bluetooth checks do not perform discovery, pairing, or
+connections. Missing provider information is never reported as success.
+
+## Usage
+
+```bash
+pryn --help
+pryn check
+pryn check wifi
+pryn check bluetooth
+pryn check audio
+pryn check --verbose
+pryn check --format json
+pryn check --format json --output pryn-report.json
+```
+
+Exit codes:
+
+- `0`: completed checks found no warning, problem, unknown, or incomplete state.
+- `1`: report contains a warning/problem/unknown/incomplete result. Read the report; this is not a process crash.
+- `2`: command execution or report-output error.
+
+Diagnostic JSON can contain local IP addresses, gateways, and DNS server
+addresses. Review it before sharing a report publicly.
+
+## Build from source
 
 ```bash
 cargo check --locked
 cargo build --release --locked
-cargo install --path . --locked
-```
-
-`cargo install --path .` installs the current checkout into Cargo's user binary directory. It does not publish a package or create a distribution package.
-
-Run all local quality checks with:
-
-```bash
 ./scripts/verify.sh
 ```
 
-## Use PRYN
+The pinned Rust toolchain is specified in `rust-toolchain.toml`.
 
-```bash
-# Show available commands
-cargo run -- --help
+## Distribution and support
 
-# Check Wi-Fi, Bluetooth, and audio
-cargo run -- check
-
-# Check one area
-cargo run -- check wifi
-cargo run -- check bluetooth
-cargo run -- check audio
-
-# Show every check and supporting evidence
-cargo run -- check --verbose
-cargo run -- check wifi --verbose
-```
-
-## Exit codes
-
-- `0`: completed checks found no warning/problem/unknown state.
-- `1`: the report contains a warning, problem, unknown, partial, or not-implemented check. Read the report; this is not necessarily a fatal execution error.
-- `2`: PRYN could not execute the command or write the requested report.
-
-## Save results as JSON
-
-```bash
-cargo run -- check --format json
-cargo run -- check --format json --output pryn-report.json
-```
-
-PRYN does not overwrite an existing file unless `--force` is supplied:
-
-```bash
-cargo run -- check --format json --output pryn-report.json --force
-```
-
-## Quality checks
-
-```bash
-cargo fmt --all -- --check
-cargo clippy --all-targets --all-features --locked -- -D warnings
-cargo test --all-targets --all-features --locked
-cargo build --release --locked
-```
+See [`docs/distribution.md`](docs/distribution.md) and
+[`docs/support-matrix.md`](docs/support-matrix.md) for package formats,
+architecture, host-service requirements, and tested environments.
 
 ## License
 
-PRYN is dual-licensed under either the [MIT License](LICENSE-MIT) or [Apache License, Version 2.0](LICENSE-APACHE), at your option.
-
-## Project principles
-
-- Read-only by default; no root requirement for supported checks.
-- No telemetry or PRYN-initiated network requests. The optional `ip` command only reads local kernel network state.
-- No shell is used for system inspection. Optional system tools such as `ip` and `pw-dump` are invoked directly with bounded execution time and output; their output is parsed as data.
-- Missing information is never reported as success.
-- System information collection is kept separate from the rules that interpret it.
-- JSON results include a schema version for compatibility.
-
-Diagnostic JSON can contain local IP addresses, default gateways, and DNS server addresses. Review it before sharing a report publicly.
-
-See [`docs/architecture.md`](docs/architecture.md), [`docs/results.md`](docs/results.md), [`docs/support-matrix.md`](docs/support-matrix.md), [`docs/audio-diagnostics.md`](docs/audio-diagnostics.md), and [`docs/releasing.md`](docs/releasing.md).
+Dual-licensed under either [MIT](LICENSE-MIT) or
+[Apache License 2.0](LICENSE-APACHE), at your option.

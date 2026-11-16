@@ -14,13 +14,13 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  TARGET: x86_64-unknown-linux-gnu
+  TARGET: x86_64-unknown-linux-musl
 
 jobs:
   build-and-draft-release:
-    name: build Linux x86_64 release
+    name: Build and publish draft Linux distribution assets
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout tagged source
         uses: actions/checkout@v7
@@ -28,20 +28,50 @@ jobs:
       - name: Install pinned Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v2
 
+      - name: Install musl and package tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools dpkg-dev rpm binutils
+          rustup target add "$TARGET"
+
       - name: Verify tagged source
         run: ./scripts/verify.sh
 
-      - name: Build and package Linux binary
+      - name: Check tag and Cargo version match
         run: |
-          cargo build --release --locked --target "$TARGET"
-          version="${GITHUB_REF_NAME#v}"
-          ./scripts/package-linux.sh "$version" "$TARGET"
+          tag_version="${GITHUB_REF_NAME#v}"
+          manifest_version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
+          test "$tag_version" = "$manifest_version" || {
+            echo "Tag version $tag_version does not match Cargo.toml $manifest_version" >&2
+            exit 1
+          }
 
-      - name: Create draft GitHub Release
+      - name: Build x86_64 musl executable
+        run: cargo build --release --locked --target "$TARGET"
+
+      - name: Verify no shared-library dependencies
+        run: ./scripts/check-static-binary.sh "target/$TARGET/release/pryn"
+
+      - name: Build universal archive, DEB, RPM, and AUR metadata
+        run: ./scripts/package-distribution.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Test packages on representative Linux distributions
+        run: ./scripts/smoke-test-distributions.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Create draft or upload assets to existing draft
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --draft \
-            --generate-notes \
-            --title "PRYN $GITHUB_REF_NAME"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            is_draft="$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq '.isDraft')"
+            if [[ "$is_draft" != "true" ]]; then
+              echo "Refusing to overwrite assets on an already-published release: $GITHUB_REF_NAME" >&2
+              exit 1
+            fi
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --draft \
+              --generate-notes \
+              --title "PRYN $GITHUB_REF_NAME"
+          fi
