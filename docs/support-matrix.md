@@ -1,41 +1,58 @@
 # Support matrix
 
-PRYN targets Linux. The x86_64 musl executable is designed to avoid a runtime
-dependency on the host glibc or other shared libraries. Service-level checks
-remain capability-based and depend on the service and optional inspection
-tools being present in the current user session.
+PRYN targets Linux x86_64. The v0.1.1 prebuilt executable is statically linked for `x86_64-unknown-linux-musl`; native `.deb` and `.rpm` packages reuse the same executable. Service-level diagnostics depend on what is available on the host and in the current user session.
+
+## Release and architecture
+
+| Target | Availability | Notes |
+|---|---|---|
+| Linux x86_64 / amd64 | Available in v0.1.1 | Static musl executable, `.deb`, `.rpm`, and generic archive |
+| Linux AArch64 / ARM64 | Not supported | Deferred until there is demand and a test device |
+
+## Automated container smoke tests
+
+| Environment | Package or executable tested | Result | What was verified |
+|---|---|---|---|
+| Ubuntu 26.04 | `.deb` | Passed | Install, `--version`, `--help`, process startup, JSON report |
+| Debian 13 | `.deb` | Passed | Install, `--version`, `--help`, process startup, JSON report |
+| Kali Rolling | `.deb` | Passed | Install, `--version`, `--help`, process startup, JSON report |
+| Fedora latest | `.rpm` | Passed | Install, `--version`, `--help`, process startup, JSON report |
+| Alpine latest | Static musl archive | Passed | Extract, `--version`, `--help`, process startup, JSON report |
+
+A container smoke test is not physical hardware validation and does not prove all subsystem providers are present.
 
 ## Real-machine validation
 
 | Environment | Architecture | Status | Notes |
 |---|---|---|---|
-| Arch Linux | x86_64 | Runtime tested | Wi-Fi, BlueZ and PipeWire inspected on maintainer hardware. |
-| Ubuntu 26.04 | x86_64 | Runtime tested | NetworkManager, BlueZ and PipeWire inspected on a real machine. |
-| Kali Rolling | x86_64 | Runtime tested | NetworkManager and audio inspected; BlueZ was not running and correctly reported unavailable. |
-| Debian 13 | x86_64 | Pending | Package/container smoke test is not physical hardware validation. |
-| Fedora | x86_64 | Pending | Package/container smoke test is not physical hardware validation. |
-| Alpine | x86_64 | Pending | Static-musl startup smoke test; host service integrations need separate testing. |
-| AArch64 Linux | aarch64 | Not supported yet | Deferred until a test device and user demand exist. |
+| Arch Linux | x86_64 | Runtime tested | Maintainer's real machine |
+| Ubuntu 26.04 | x86_64 | Runtime tested | Real machine; diagnostics exercised with the host services present |
+| Kali Rolling | x86_64 | Runtime tested | Real machine; missing BlueZ was reported as unavailable/unknown |
+| Debian 13 | x86_64 | Not individually machine-tested | CI container smoke test only |
+| Fedora | x86_64 | Not individually machine-tested | CI container smoke test only |
+| openSUSE | x86_64 | Not validated | RPM is intended for local installation |
+| Alpine | x86_64 | Not individually machine-tested | CI container startup smoke test only |
+| Linux Mint / Pop!_OS / other derivatives | x86_64 | Not individually validated | Expected to be compatible with the relevant base-family package; test before making a support claim |
 
-## Distribution artifacts
+## Package formats
 
-| Artifact | Ecosystem | Architecture | Runtime shared-library requirement |
+| Artifact | Ecosystem | Architecture | Shared runtime dependency |
 |---|---|---|---|
-| Static musl tarball | Generic Linux | x86_64 | None expected; verified by ELF inspection and container smoke tests. |
-| `.deb` | Debian, Ubuntu, Kali and derivatives | amd64 | None declared; contains the same static musl executable. |
-| `.rpm` | Fedora, RHEL-compatible, openSUSE | x86_64 | None declared; contains the same static musl executable. |
-| `pryn-bin` | Arch AUR | x86_64 | None; installs the same static musl executable. |
-| crates.io source package | Rust/Cargo | Host target | Requires Rust/Cargo to compile. |
+| `.deb` | Debian / Ubuntu / Kali family | amd64 | None declared; contains static musl executable |
+| `.rpm` | Fedora / RHEL family / openSUSE (intended) | x86_64 | None declared; contains static musl executable |
+| Generic tarball | Compatible x86_64 Linux | x86_64 | None expected; static-musl binary |
+| `pryn-bin` PKGBUILD | Arch local build / future AUR package | x86_64 | No Rust/Cargo; builds a package around the prebuilt archive |
+| crates.io | Rust/Cargo users | Host target | Rust/Cargo required to compile |
 
-## Runtime capability requirements
+The `pryn-bin` recipe is attached to the release but has not yet been submitted to the AUR. `yay -S pryn-bin` is not available until that submission exists.
+
+## Runtime capabilities
 
 - Wi-Fi manager state: NetworkManager or standalone iwd over system D-Bus.
 - Bluetooth adapter and device state: BlueZ over system D-Bus.
-- Audio endpoint details: ALSA discovery and a PulseAudio-compatible user socket; native PipeWire graph details are enhanced by optional `pw-dump`.
-- IP addresses and routes: optional `ip` from iproute2; without it, those observations remain unknown.
+- Audio endpoint details: ALSA discovery and a PulseAudio-compatible user socket.
+- Native PipeWire graph details: optional `pw-dump`.
+- IP addresses and routes: optional `ip` from iproute2.
 - DNS configuration: `/etc/resolv.conf`.
 
-PRYN does not install, enable, start, restart, or configure these services. An
-absent service is an unavailable diagnostic capability, not a package install
-failure. A passing container smoke test confirms executable/package startup,
-not working physical radios, speakers, microphones, or internet reachability.
+PRYN does not install or manage any of these services. A missing service is an unavailable diagnostic capability, not a package installation failure.

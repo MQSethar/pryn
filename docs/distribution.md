@@ -2,145 +2,81 @@
 
 ## Goal
 
-Ship one x86_64 executable for Linux rather than compiling a different PRYN
-binary for every distribution. Native packages are thin wrappers around the
-same executable. PRYN must not require Rust, Cargo, a compiler, glibc, or any
-other shared runtime library for normal installation.
+Ship one x86_64 executable for Linux rather than compiling a different PRYN binary for every distribution. Native packages are thin wrappers around the same executable. Normal users should not need Rust, Cargo, a compiler, glibc, or another shared runtime library to install and run a prebuilt release.
 
-The initial portable target is `x86_64-unknown-linux-musl`. This is a static
-musl build. It is intended to run on common x86_64 Linux userlands with a
-compatible Linux kernel and normal `/proc`, `/sys`, and D-Bus interfaces. It is
-not called universally supported until the release smoke tests and physical
-runtime tests pass.
+The portable target is `x86_64-unknown-linux-musl`. The release's `.deb`, `.rpm`, generic archive, and generated Arch binary recipe all reuse that same statically linked executable.
 
-## Release artifacts
+## v0.1.1 release artifacts
 
-Each distribution release produces:
+The [v0.1.1 GitHub Release](https://github.com/MQSethar/pryn/releases/tag/v0.1.1) contains:
 
-- `pryn-vVERSION-x86_64-unknown-linux-musl.tar.gz`: universal x86_64 Linux archive.
-- `pryn_VERSION_amd64.deb`: one Debian-family package for amd64.
-- `pryn-VERSION-1.x86_64.rpm`: one RPM-family package for x86_64.
-- `pryn-bin.PKGBUILD` and `pryn-bin.SRCINFO`: AUR recipe pinned to the exact
-  archive checksum.
-- `SHA256SUMS`: checksums for the release assets.
+- `pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz`: generic x86_64 Linux archive.
+- `pryn_0.1.1_amd64.deb`: Debian-family package.
+- `pryn-0.1.1-1.x86_64.rpm`: RPM-family package.
+- `pryn-bin.PKGBUILD` and `pryn-bin.SRCINFO`: generated Arch AUR recipe metadata.
+- `SHA256SUMS`: SHA-256 checksums for the release assets.
 
-The `.deb`, `.rpm`, AUR package, and archive all contain the exact same
-statically linked executable. The native packages declare no external runtime
-library dependencies. They do not install NetworkManager, iwd, BlueZ,
-PulseAudio, PipeWire, ALSA utilities, `iproute2`, or `pw-dump`.
+The AUR recipe has not yet been submitted to the AUR. The `.deb` and `.rpm` are direct-download packages, not entries in hosted package repositories. The RPM is unsigned.
 
 ## Installation methods
 
-### Debian, Ubuntu, Kali, and derivatives
+See [Install PRYN on Linux](installation.md) for user-facing instructions and exact commands.
 
-Download the matching `.deb` asset and `SHA256SUMS`, verify the checksum, then:
+- Debian, Ubuntu, Kali and compatible derivatives: install the local `.deb` using APT.
+- Fedora and compatible RPM distributions: install the local `.rpm` using DNF; the current RPM is unsigned.
+- openSUSE: the same `.rpm` is the intended local package, but openSUSE has not yet been smoke-tested.
+- Arch Linux: build a local package from the generated PKGBUILD. `yay -S pryn-bin` becomes available only after the recipe is actually submitted and visible in the AUR.
+- Alpine and other compatible x86_64 distributions: extract the static-musl archive and install the executable manually.
+- Rust developers: `cargo install pryn --locked` builds from source and requires Rust/Cargo.
 
-```bash
-sudo apt install ./pryn_VERSION_amd64.deb
-pryn --version
-pryn check
-```
+There is no hosted APT or RPM repository yet. Users must download the release file directly. `apt install pryn` and `dnf install pryn` from the default repository indexes are not supported.
 
-The file package works with dpkg/APT on compatible amd64 Debian-family
-systems. It does not make `apt install pryn` work from the default repositories.
-A hosted APT repository or inclusion in a distribution repository is a
-separate future project.
+## Runtime independence and host capabilities
 
-### Fedora, RHEL, Rocky, AlmaLinux, and openSUSE
+The executable is statically linked for x86_64 Linux and does not require host glibc or shared runtime libraries. This does not mean every Linux service is bundled.
 
-Download the matching `.rpm` and `SHA256SUMS`, verify the checksum, then:
+The following are optional host capabilities:
 
-```bash
-sudo dnf install --nogpgcheck ./pryn-VERSION-1.x86_64.rpm
-pryn --version
-pryn check
-```
+- NetworkManager or standalone iwd over system D-Bus for Wi-Fi manager state.
+- BlueZ over system D-Bus for Bluetooth state.
+- ALSA discovery and a PulseAudio-compatible user socket for audio details.
+- `pw-dump` for additional native PipeWire graph inspection.
+- `ip` from iproute2 for address and route observations.
+- `/etc/resolv.conf` for configured DNS nameservers.
 
-For openSUSE, use `zypper install ./pryn-VERSION-1.x86_64.rpm`. The release
-RPM is initially unsigned, hence `--nogpgcheck` for local installation. A
-hosted signed RPM repository is deferred until the adoption milestone.
-
-### Arch Linux
-
-The generated `pryn-bin.PKGBUILD` is submitted to the AUR as `pryn-bin` after
-local validation. The intended installation is:
-
-```bash
-yay -S pryn-bin
-```
-
-AUR is community-maintained and is not an official Arch repository. The AUR
-recipe verifies the downloaded release archive using its pinned SHA-256.
-
-### Any compatible x86_64 Linux distribution
-
-Download the musl archive and checksum, verify, extract, and install:
-
-```bash
-sha256sum --check SHA256SUMS
-tar -xzf pryn-vVERSION-x86_64-unknown-linux-musl.tar.gz
-install -Dm755 pryn-vVERSION/pryn ~/.local/bin/pryn
-```
-
-No Rust installation is required for the archive or native packages.
-
-### Rust developers
-
-The crates.io package remains available for source installation:
-
-```bash
-cargo install pryn --locked
-```
-
-This route requires a Rust toolchain and is not the recommended installation
-for ordinary users.
-
-## Runtime capabilities are not bundled dependencies
-
-The executable is self-contained at the shared-library level. The things PRYN
-inspects are host capabilities and remain optional:
-
-- system D-Bus, NetworkManager or standalone iwd for Wi-Fi manager state;
-- system D-Bus and BlueZ for Bluetooth state;
-- ALSA device information and a PulseAudio-compatible socket for audio state;
-- native PipeWire inspection when `pw-dump` is installed;
-- IP address and route inspection when `ip` from iproute2 is installed.
-
-If a service or optional utility is missing, PRYN reports that capability as
-unavailable or unknown. Package installation must not enable, install, or
-reconfigure any of those services.
+PRYN does not install, enable, start, restart, or configure these services. Missing providers must remain unavailable/unknown rather than becoming false passes. A successful install does not imply that Wi-Fi, Bluetooth, audio, or internet diagnostics are all available.
 
 ## Compatibility validation
 
-The CI container smoke test installs the `.deb` in Ubuntu, Debian, and Kali;
-installs the `.rpm` in Fedora; and executes the static archive in Alpine. The
-smoke test checks `--version`, `--help`, process startup, and versioned JSON
-output. It does not claim that containers have working physical Wi-Fi,
-Bluetooth, or audio hardware.
+### CI container smoke tests
 
-Physical runtime validation recorded by the maintainer:
+The v0.1.1 release workflow successfully installed or executed PRYN and checked `--version`, `--help`, process startup, and versioned JSON output in:
 
-- Arch Linux x86_64: tested on real hardware.
-- Ubuntu 26.04 x86_64: tested on a real machine.
-- Kali Rolling x86_64: tested on a real machine.
+- Ubuntu 26.04 container using the `.deb`.
+- Debian 13 container using the `.deb`.
+- Kali Rolling container using the `.deb`.
+- Fedora latest container using the `.rpm`.
+- Alpine latest container using the static-musl archive.
 
-Update this list only when a real test is completed. Container smoke tests
-must be recorded separately from physical hardware validation.
+These tests validate package/startup behavior only. They do not test physical radios, audio devices, service configuration, or network reachability.
 
-## No per-distribution binary builds
+### Real-machine validation
 
-Do not create separate PRYN executables for Ubuntu, Debian, Kali, Mint, Fedora,
-Rocky, AlmaLinux, or openSUSE. Build one x86_64 musl executable and wrap it in
-Debian/RPM/AUR metadata. The only planned architecture after x86_64 is
-AArch64, once demand and a real test device justify it.
+The maintainer's documented real-machine tests are:
 
-## Signing and hosted repositories are deferred
+- Arch Linux x86_64.
+- Ubuntu 26.04 x86_64.
+- Kali Rolling x86_64.
 
-Initial releases use GitHub TLS, SHA-256 checksums, and transparent source
-history. Checksums detect corruption but do not authenticate the publisher if
-an attacker can replace both the artifact and checksum. Initial release assets
-and packages are not cryptographically signed.
+Do not convert CI container results into a claim of physical runtime support. Update `docs/support-matrix.md` when new real-machine testing is completed.
 
-Do not operate hosted APT/RPM repositories yet. They require ongoing signing
-key protection, repository metadata generation, key rotation, mirrors, and
-incident response.
+## Architecture
+
+- x86_64/amd64: current release target.
+- AArch64/ARM64: not supported yet. Add it only when demand and a physical test device justify the maintenance cost.
+
+## Signing and repositories
+
+The initial release provides SHA-256 checksums, but no cryptographic signatures. A checksum detects corruption; it does not independently authenticate the publisher if an attacker can replace both the artifact and checksum.
+
+Signed release artifacts and hosted signed APT/RPM repositories are deferred until the adoption milestone in [signing-and-adoption.md](signing-and-adoption.md). Do not describe the current release packages as signed.
