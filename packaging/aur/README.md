@@ -1,28 +1,44 @@
-# AUR package: pryn-bin
+# Arch package: pryn-bin
 
-The release workflow generates `dist/pryn-bin.PKGBUILD` and
-`dist/pryn-bin.SRCINFO` for the exact release archive and checksum. Do not
-submit the template by itself: use the generated files from the release you
-are publishing.
+The v0.1.1 release contains generated `pryn-bin.PKGBUILD` and `pryn-bin.SRCINFO` files. The recipe installs the prebuilt static-musl executable; it does not compile PRYN from Rust source and does not require Cargo.
 
-Install the standard Arch package build tools once if they are missing:
+**Status:** the recipe has not yet been submitted to the AUR. Until the AUR package page exists, `yay -S pryn-bin` is not a working installation method.
+
+## Install the local package now
+
+Install Arch's package-building tools:
 
 ```bash
-sudo pacman -S --needed base-devel git
+sudo pacman -S --needed base-devel curl
 ```
 
-On Arch Linux, test the generated package before submitting it:
+Download the recipe from the published release:
 
 ```bash
-mkdir -p ~/Projects/pryn-aur-test
-cp dist/pryn-bin.PKGBUILD ~/Projects/pryn-aur-test/PKGBUILD
-cd ~/Projects/pryn-aur-test
+mkdir -p ~/build/pryn-bin
+cd ~/build/pryn-bin
+
+curl -fL https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-bin.PKGBUILD -o PKGBUILD
+```
+
+Validate its source and build/install the package:
+
+```bash
 makepkg --printsrcinfo > .SRCINFO
 makepkg --verifysource
-makepkg --cleanbuild --syncdeps --install
+makepkg -si
 ```
 
-After the local build and install test pass, create the AUR package repository
-through your AUR account, clone it, copy the tested `PKGBUILD` and `.SRCINFO`,
-then commit and push. AUR is community-maintained; it is not an official Arch
-repository.
+The PKGBUILD contains a pinned SHA-256 for the matching GitHub release archive. `makepkg` verifies the downloaded archive before installing it.
+
+## Submit to the AUR
+
+After the GitHub release archive is public and local package validation passes:
+
+1. Create the AUR package `pryn-bin` through your AUR account.
+2. Clone the new AUR Git repository.
+3. Copy the reviewed `PKGBUILD` and `.SRCINFO` into it.
+4. Commit and push the package files.
+5. Open the public package page and verify the package is searchable before changing the main README or site to advertise `yay -S pryn-bin`.
+
+AUR packages are community-maintained, not official Arch repository packages. Keep the PKGBUILD source checksum synchronized with every release.
