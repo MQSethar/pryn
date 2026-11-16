@@ -1,0 +1,83 @@
+name: PRYN Portable Distribution CI
+
+on:
+  pull_request:
+    paths:
+      - '.cargo/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'LICENSE-*'
+      - 'src/**'
+      - 'scripts/**'
+      - 'packaging/**'
+      - '.github/workflows/**'
+  push:
+    branches: [main]
+    paths:
+      - '.cargo/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'LICENSE-*'
+      - 'src/**'
+      - 'scripts/**'
+      - 'packaging/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  TARGET: x86_64-unknown-linux-musl
+
+jobs:
+  build-package-and-smoke-test:
+    name: Build static binary and test Linux packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v2
+
+      - name: Install musl and package tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools dpkg-dev rpm binutils
+          rustup target add "$TARGET"
+          musl-gcc --version
+          rpmbuild --version
+
+      - name: Run project verification
+        run: ./scripts/verify.sh
+
+      - name: Build x86_64 musl executable
+        run: cargo build --release --locked --target "$TARGET"
+
+      - name: Verify static ELF linkage
+        run: ./scripts/check-static-binary.sh "target/$TARGET/release/pryn"
+
+      - name: Build archive, DEB, RPM, and AUR metadata
+        run: |
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
+          ./scripts/package-distribution.sh "$version"
+
+      - name: Test package installation on Linux distributions
+        run: |
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)"
+          ./scripts/smoke-test-distributions.sh "$version"
+
+      - name: Upload distribution artifacts for inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: pryn-x86_64-linux-packages
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
