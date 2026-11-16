@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.1] - 2026-11-17
+
+### Added
+- Add a statically linked x86_64 Linux musl release build.
+- Add automatic generation of Debian packages (`.deb`).
+- Add automatic generation of RPM packages (`.rpm`).
+- Add Arch Linux `pryn-bin` packaging metadata.
+- Add cross-distribution installation and execution smoke tests.
+- Extend SHA-256 checksum generation to distribution artifacts.
+
+### Changed
+- Update installation documentation for precompiled Linux binaries and native packages.
+- Standardize distribution artifacts around a shared x86_64 executable.
+
+### Notes
+- The first portable distribution release targets x86_64 Linux.
+- ARM64 support is deferred.
+- Signed APT and RPM repositories are deferred until the project's adoption milestone.
+
+---
+
+
 ## [0.1.0] - 2026-11-15
 
 - Replace the placeholder binary with a structured `check` command.
