@@ -1,0 +1,75 @@
+PRYN WEBSITE REDESIGN — APPLY INSTRUCTIONS
+
+This ZIP is the only file you need. Extract it at the root of your existing
+~/Projects/pryn repository. It replaces the old website and updates the
+README and installation/website guides. It does not change Rust source,
+Cargo.toml, Cargo.lock, tags, or published releases.
+
+1. Start from the latest main branch and create a new branch:
+
+   cd ~/Projects/pryn
+   git status --short
+
+   The command above should print nothing. If it shows local changes, stop and
+   commit or safely save those changes before continuing.
+
+   git switch main
+   git pull --ff-only origin main
+   git switch -c website/new-pryn-site
+
+2. Extract this ZIP into the repository root. In this example the ZIP is in
+   ~/Downloads:
+
+   unzip -l ~/Downloads/pryn-website-redesign.zip
+   unzip -o ~/Downloads/pryn-website-redesign.zip -d .
+
+3. Check the website files and documentation:
+
+   node --check site/app.js
+   python3 -m json.tool site/release.json >/dev/null
+   git diff --check
+
+4. Preview the website locally:
+
+   python3 -m http.server 4173 --directory site
+
+   Open http://localhost:4173 in your browser. Keep the terminal open while
+   previewing. Press Ctrl+C in that terminal to stop the local server.
+
+5. Verify the Rust project and inspect the changes:
+
+   ./scripts/verify.sh
+   git status --short
+   git diff --stat
+   git diff -- README.md docs/installation.md docs/website.md
+
+   Do not commit if verification fails or the website is not how you want it.
+
+6. Commit and push the redesign branch:
+
+   git add -A
+   git diff --cached --check
+   git diff --cached --stat
+   git commit -m "site: redesign PRYN installation website"
+   git push -u origin website/new-pryn-site
+
+7. Open a pull request targeting main:
+
+   https://github.com/MQSethar/pryn/compare/main...website/new-pryn-site?expand=1
+
+   Wait for PRYN CI and Portable Distribution CI to pass, then merge.
+
+8. After merging, check the Deploy PRYN installation website workflow in
+   GitHub Actions. GitHub Pages must use Settings > Pages > Build and
+   deployment > Source: GitHub Actions.
+
+   If configure-pages reports 404 Not Found, the Pages site still has not
+   been created/enabled for Actions. Fix that Pages setting before rerunning;
+   do not repeatedly rerun the same failed workflow.
+
+IMPORTANT
+- PRYN remains at v0.1.1. Do not create a new tag or publish a crate for this.
+- The page reads the real release filenames from site/release.json.
+- Keep aurPublished false until pryn-bin is actually visible in the AUR.
+- Install commands assume the browser saved downloads in ~/Downloads.
+- The dark theme is the default; the theme button switches to light mode.

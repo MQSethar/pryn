@@ -3,6 +3,7 @@
   "tag": "v0.1.1",
   "architecture": "x86_64",
   "aurPublished": false,
+  "aurUrl": "https://aur.archlinux.org/packages/pryn-bin",
   "debAsset": "pryn_0.1.1_amd64.deb",
   "rpmAsset": "pryn-0.1.1-1.x86_64.rpm",
   "archiveAsset": "pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz",

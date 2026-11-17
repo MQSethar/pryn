@@ -1,179 +1,276 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b0d11">
-  <meta name="description" content="Install PRYN on Linux. Read-only diagnostics for Wi-Fi, Bluetooth, and audio. Prebuilt x86_64 packages, no Rust or Cargo required.">
-  <meta property="og:title" content="PRYN — Linux diagnostics, without the guesswork">
-  <meta property="og:description" content="Install PRYN on Debian, Ubuntu, Kali, Fedora, Arch, Alpine, and compatible x86_64 Linux systems.">
+  <meta name="theme-color" content="#050608">
+  <meta name="description" content="PRYN is a fast, read-only Linux diagnostic tool for Wi-Fi, Bluetooth and audio. Install on x86_64 Linux without Rust or Cargo.">
+  <meta property="og:title" content="PRYN — Linux diagnostics, made clear">
+  <meta property="og:description" content="Understand what your Linux system can confirm about Wi-Fi, Bluetooth and audio. Read-only. No Rust required for prebuilt packages.">
   <meta property="og:type" content="website">
-  <title>Install PRYN — Linux diagnostics</title>
+  <meta property="og:image" content="https://mqsethar.github.io/pryn/assets/pryn-social.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PRYN — Read-only Linux diagnostics">
+  <meta name="twitter:description" content="Know what your Linux system can confirm about Wi-Fi, Bluetooth and audio.">
+  <link rel="canonical" href="https://mqsethar.github.io/pryn/">
+  <title>PRYN — Read-only Linux diagnostics</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles.css">
   <script src="./app.js" defer></script>
 </head>
 <body>
-  <div class="page-grid" aria-hidden="true"></div>
-  <header class="topbar">
-    <a class="brand" href="#top" aria-label="PRYN home">
-      <span class="brand-mark">P</span>
-      <span>PRYN</span>
-      <span class="brand-divider"></span>
-      <span class="brand-sub">LINUX DIAGNOSTICS</span>
-    </a>
-    <nav class="topnav" aria-label="Main navigation">
-      <a href="#install">INSTALL</a>
-      <a href="#capabilities">CAPABILITIES</a>
-      <a href="https://github.com/MQSethar/pryn">SOURCE</a>
-      <a class="nav-cta" href="https://github.com/MQSethar/pryn/releases/latest">GET PRYN <span>↗</span></a>
-    </nav>
-    <button class="menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false">☰</button>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#top" aria-label="PRYN home">
+        <img src="./assets/pryn-mark.svg" alt="" width="34" height="34">
+        <span>PRYN</span>
+      </a>
+      <nav class="main-nav" id="main-nav" aria-label="Main navigation">
+        <a href="#overview">Overview</a>
+        <a href="#install">Install</a>
+        <a href="#capabilities">What it checks</a>
+        <a href="#docs">Docs</a>
+      </nav>
+      <div class="header-actions">
+        <a class="header-github" href="https://github.com/MQSethar/pryn" target="_blank" rel="noreferrer" aria-label="PRYN on GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.56.1.76-.24.76-.54v-2.1c-3.1.68-3.76-1.32-3.76-1.32-.5-1.3-1.24-1.65-1.24-1.65-1.02-.7.08-.69.08-.69 1.12.08 1.71 1.15 1.71 1.15 1 1.7 2.61 1.21 3.25.93.1-.73.39-1.21.71-1.49-2.48-.28-5.09-1.24-5.09-5.54 0-1.22.44-2.21 1.15-2.99-.12-.28-.5-1.42.11-2.95 0 0 .94-.3 3.05 1.14a10.6 10.6 0 0 1 5.55 0c2.11-1.44 3.04-1.14 3.04-1.14.61 1.53.23 2.67.12 2.95.71.78 1.14 1.77 1.14 2.99 0 4.31-2.61 5.25-5.1 5.53.4.35.76 1.03.76 2.08v3.1c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z"/></svg>
+        </a>
+        <button class="theme-toggle" type="button" id="theme-toggle" aria-label="Switch to light theme" title="Switch theme">
+          <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>
+          <svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.1A8.8 8.8 0 0 1 9.9 3.5a9 9 0 1 0 10.6 10.6Z"/></svg>
+          <span id="theme-label">Light mode</span>
+        </button>
+        <button class="mobile-menu" id="mobile-menu" type="button" aria-label="Open navigation" aria-controls="main-nav" aria-expanded="false">
+          <span></span><span></span>
+        </button>
+      </div>
+    </div>
   </header>
 
-  <main id="top">
-    <section class="hero shell">
-      <div class="hero-kicker"><span class="pulse-dot"></span> READ-ONLY LINUX DIAGNOSTICS <span class="kicker-line"></span> <span id="version-label">V0.1.1</span></div>
-      <div class="hero-layout">
-        <div class="hero-copy">
-          <p class="eyebrow">WI-FI / BLUETOOTH / AUDIO</p>
-          <h1>Know what your<br><em>Linux system</em> sees.</h1>
-          <p class="hero-lede">PRYN inspects the signals your system exposes and tells you what it can actually confirm. No auto-fixes. No background daemon. No guessing dressed up as a green checkmark.</p>
-          <div class="hero-actions">
-            <a class="button button-light" href="#install">Download for Linux <span aria-hidden="true">↓</span></a>
-            <a class="button button-quiet" href="https://github.com/MQSethar/pryn">View source <span aria-hidden="true">↗</span></a>
-          </div>
-          <div class="hero-meta">
-            <span>OPEN SOURCE</span><span>STATIC X86_64 BUILDS</span><span>NO RUST REQUIRED</span>
-          </div>
+  <main id="main">
+    <section class="hero wrap" id="top">
+      <div class="hero-copy" id="overview">
+        <div class="eyebrow"><span class="eyebrow-dot"></span> READ-ONLY LINUX DIAGNOSTICS <span class="release-chip" id="release-chip">v0.1.1</span></div>
+        <h1>Know what your<br><span>Linux system sees.</span></h1>
+        <p class="hero-lede">PRYN checks Wi-Fi, Bluetooth and audio, then explains what it can actually confirm. No system changes. No background service. No guesswork.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#install">Install PRYN <span aria-hidden="true">↓</span></a>
+          <a class="button button-secondary" href="https://github.com/MQSethar/pryn" target="_blank" rel="noreferrer">View source <span aria-hidden="true">↗</span></a>
         </div>
-        <div class="hero-terminal" aria-label="Example PRYN diagnostic output">
-          <div class="terminal-top"><span><i></i> pryn / check</span><span>READ ONLY</span></div>
-          <div class="terminal-body">
-            <div class="terminal-line muted">$ pryn check</div>
-            <div class="terminal-row"><span class="terminal-label">WIFI</span><span class="terminal-status good">INSPECTED</span></div>
-            <div class="terminal-row"><span class="terminal-label">BLUETOOTH</span><span class="terminal-status unknown">UNKNOWN</span></div>
-            <div class="terminal-row"><span class="terminal-label">AUDIO</span><span class="terminal-status good">INSPECTED</span></div>
-            <div class="terminal-rule"></div>
-            <div class="terminal-line muted">Evidence first. Conclusions second.</div>
-            <div class="terminal-footer"><span>NO SYSTEM CHANGES</span><span>● LOCAL</span></div>
-          </div>
+        <div class="hero-facts" aria-label="Project facts">
+          <span>Open source</span><i></i><span>Linux x86_64</span><i></i><span>No Rust required</span>
         </div>
       </div>
-      <div class="hero-bottom"><span>01 / GET STARTED</span><span>BUILT FOR LINUX, WRITTEN IN RUST</span></div>
+      <div class="hero-visual" aria-label="Example of PRYN's three diagnostic areas">
+        <div class="visual-top"><span class="live-dot"></span><span>PRYN / SYSTEM CHECK</span><span class="visual-readonly">READ ONLY</span></div>
+        <div class="visual-command"><span class="prompt-mark">$</span> pryn check</div>
+        <div class="visual-items">
+          <div class="visual-item">
+            <span class="service-icon wifi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 8.8a14.2 14.2 0 0 1 19 0M5.8 12.2a9.3 9.3 0 0 1 12.4 0m-9 3.5a4.1 4.1 0 0 1 5.6 0M12 19h.01"/></svg></span>
+            <span class="visual-name">Wi-Fi</span><span class="visual-detail">Network state</span>
+          </div>
+          <div class="visual-item">
+            <span class="service-icon bluetooth-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg></span>
+            <span class="visual-name">Bluetooth</span><span class="visual-detail">Adapters & devices</span>
+          </div>
+          <div class="visual-item">
+            <span class="service-icon audio-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4m4-8v12m4-15v18m4-13v8m4-11v14m4-10v6"/></svg></span>
+            <span class="visual-name">Audio</span><span class="visual-detail">Devices & profiles</span>
+          </div>
+        </div>
+        <div class="visual-bottom"><span>3 DIAGNOSTIC AREAS</span><span>NO SETTINGS CHANGED</span></div>
+      </div>
     </section>
 
-    <section class="install-section shell" id="install">
-      <div class="section-head">
-        <div><p class="eyebrow">02 / INSTALLATION</p><h2>Pick your distro.<br><span>Get the right package.</span></h2></div>
-        <p class="section-aside">One x86_64 executable. Native package wrappers where available. A generic static archive everywhere else.</p>
+    <section class="install-section wrap" id="install">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">01 / INSTALLATION</p>
+          <h2>Get PRYN running.</h2>
+        </div>
+        <p class="section-intro">Choose your Linux family. Download one file, then run the install command. You do not need Rust or Cargo.</p>
       </div>
 
-      <div class="install-console">
-        <div class="console-head">
-          <div><span class="console-indicator"></span> SELECT YOUR LINUX FAMILY</div>
-          <span class="console-version">RELEASE <b id="console-version">0.1.1</b></span>
+      <div class="architecture-note">
+        <span class="architecture-icon">x64</span>
+        <span><strong>One requirement:</strong> Linux on an x86_64 / amd64 machine. Check with <code>uname -m</code>. ARM64 is not supported yet.</span>
+      </div>
+
+      <div class="installer" aria-label="Choose a Linux distribution">
+        <div class="installer-tabs" role="tablist" aria-label="Linux distribution family">
+          <button class="distro-tab is-active" id="tab-debian" type="button" role="tab" aria-selected="true" aria-controls="panel-debian" data-tab="debian"><span>01</span> Debian / Ubuntu</button>
+          <button class="distro-tab" id="tab-rpm" type="button" role="tab" aria-selected="false" aria-controls="panel-rpm" data-tab="rpm"><span>02</span> Fedora / RPM</button>
+          <button class="distro-tab" id="tab-arch" type="button" role="tab" aria-selected="false" aria-controls="panel-arch" data-tab="arch"><span>03</span> Arch</button>
+          <button class="distro-tab" id="tab-other" type="button" role="tab" aria-selected="false" aria-controls="panel-other" data-tab="other"><span>04</span> Alpine / Other</button>
         </div>
-        <div class="distro-layout">
-          <div class="distro-tabs" role="tablist" aria-label="Linux distribution">
-            <button class="distro-tab active" role="tab" aria-selected="true" aria-controls="panel-debian" id="tab-debian" data-tab="debian"><span class="tab-icon">01</span><span><b>Debian family</b><small>Ubuntu · Debian · Kali</small></span><span class="tab-arrow">↗</span></button>
-            <button class="distro-tab" role="tab" aria-selected="false" aria-controls="panel-fedora" id="tab-fedora" data-tab="fedora"><span class="tab-icon">02</span><span><b>Fedora / RPM</b><small>Fedora · RHEL family</small></span><span class="tab-arrow">↗</span></button>
-            <button class="distro-tab" role="tab" aria-selected="false" aria-controls="panel-arch" id="tab-arch" data-tab="arch"><span class="tab-icon">03</span><span><b>Arch Linux</b><small>pacman · makepkg · AUR</small></span><span class="tab-arrow">↗</span></button>
-            <button class="distro-tab" role="tab" aria-selected="false" aria-controls="panel-generic" id="tab-generic" data-tab="generic"><span class="tab-icon">04</span><span><b>Alpine / Other</b><small>Generic static archive</small></span><span class="tab-arrow">↗</span></button>
-          </div>
 
-          <div class="install-panels">
-            <article class="install-panel active" role="tabpanel" id="panel-debian" aria-labelledby="tab-debian" data-panel="debian">
-              <div class="panel-topline"><span class="package-tag">.DEB PACKAGE</span><span class="tested-tag">CI SMOKE-TESTED</span></div>
-              <h3>Debian, Ubuntu & Kali</h3>
-              <p class="panel-description">Install the local amd64 package with APT. No Rust toolchain, compiler, or shared runtime libraries required.</p>
-              <div class="asset-row"><div><b>pryn_<span data-version>0.1.1</span>_amd64.deb</b><small>Debian package · x86_64</small></div><a class="download-link" data-asset="deb" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn_0.1.1_amd64.deb" download aria-label="Download Debian package">↓</a></div>
-              <div class="command-label"><span>INSTALL COMMAND</span><button class="copy-button" data-copy="debian">COPY COMMAND ↗</button></div>
-              <pre class="command-box" id="command-debian"><code>curl -fLO https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn_0.1.1_amd64.deb
-sudo apt install ./pryn_0.1.1_amd64.deb</code></pre>
-              <p class="panel-note">Direct package install only. This does not add a PRYN APT repository.</p>
-            </article>
+        <div class="installer-content">
+          <article class="distro-panel is-active" id="panel-debian" role="tabpanel" aria-labelledby="tab-debian" data-panel="debian">
+            <div class="panel-heading">
+              <div><span class="package-label">DEB PACKAGE</span><h3>Debian, Ubuntu & Kali</h3><p>Also suitable for compatible Debian/Ubuntu derivatives.</p></div>
+              <span class="test-label">Container tested</span>
+            </div>
+            <div class="install-steps">
+              <div class="install-step">
+                <div class="step-heading"><span class="step-number">1</span><div><strong>Download the package</strong><small>Save it to your Downloads folder.</small></div></div>
+                <div class="download-row"><span class="file-name" data-file="deb">pryn_0.1.1_amd64.deb</span><a class="download-button" data-asset="deb" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn_0.1.1_amd64.deb" target="_blank" rel="noreferrer">Download .deb <span aria-hidden="true">↓</span></a></div>
+              </div>
+              <div class="install-step">
+                <div class="step-heading"><span class="step-number">2</span><div><strong>Install it</strong><small>This command uses the file you just downloaded.</small></div></div>
+                <div class="code-row"><code data-command="debian">cd ~/Downloads &amp;&amp; sudo apt install ./pryn_0.1.1_amd64.deb</code><button class="copy-button" type="button" data-copy="debian" aria-label="Copy Debian install command">Copy</button></div>
+              </div>
+            </div>
+            <p class="panel-footnote">CI installation tests passed on Ubuntu 26.04, Debian 13 and Kali Rolling. Derivatives have not all been individually tested.</p>
+          </article>
 
-            <article class="install-panel" role="tabpanel" id="panel-fedora" aria-labelledby="tab-fedora" data-panel="fedora" hidden>
-              <div class="panel-topline"><span class="package-tag">.RPM PACKAGE</span><span class="tested-tag">FEDORA CI-TESTED</span></div>
-              <h3>Fedora & RPM family</h3>
-              <p class="panel-description">Install the x86_64 RPM locally. The current package is unsigned, so DNF must skip signature verification for this file.</p>
-              <div class="asset-row"><div><b>pryn-<span data-version>0.1.1</span>-1.x86_64.rpm</b><small>RPM package · x86_64 · unsigned</small></div><a class="download-link" data-asset="rpm" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-0.1.1-1.x86_64.rpm" download aria-label="Download RPM package">↓</a></div>
-              <div class="command-label"><span>FEDORA / DNF</span><button class="copy-button" data-copy="fedora">COPY COMMAND ↗</button></div>
-              <pre class="command-box" id="command-fedora"><code>curl -fLO https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-0.1.1-1.x86_64.rpm
-sudo dnf install --nogpgcheck ./pryn-0.1.1-1.x86_64.rpm</code></pre>
-              <div class="command-label secondary-command"><span>OPENSUSE / ZYPPER</span><button class="copy-button" data-copy="opensuse">COPY COMMAND ↗</button></div>
-              <pre class="command-box compact" id="command-opensuse"><code>sudo zypper install --allow-unsigned-rpm ./pryn-0.1.1-1.x86_64.rpm</code></pre>
-              <p class="panel-note">Fedora is the CI-tested RPM target. openSUSE and RHEL derivatives are intended targets, not yet individually validated.</p>
-            </article>
+          <article class="distro-panel" id="panel-rpm" role="tabpanel" aria-labelledby="tab-rpm" data-panel="rpm" hidden>
+            <div class="panel-heading">
+              <div><span class="package-label">RPM PACKAGE</span><h3>Fedora & RPM systems</h3><p>One x86_64 package for Fedora and compatible RPM systems.</p></div>
+              <span class="test-label">Fedora container tested</span>
+            </div>
+            <div class="install-steps">
+              <div class="install-step">
+                <div class="step-heading"><span class="step-number">1</span><div><strong>Download the package</strong><small>Save it to your Downloads folder.</small></div></div>
+                <div class="download-row"><span class="file-name" data-file="rpm">pryn-0.1.1-1.x86_64.rpm</span><a class="download-button" data-asset="rpm" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-0.1.1-1.x86_64.rpm" target="_blank" rel="noreferrer">Download .rpm <span aria-hidden="true">↓</span></a></div>
+              </div>
+              <div class="install-step">
+                <div class="step-heading"><span class="step-number">2</span><div><strong>Install it on Fedora</strong><small>The current RPM is unsigned, so DNF skips signature verification for this local file.</small></div></div>
+                <div class="code-row"><code data-command="fedora">cd ~/Downloads &amp;&amp; sudo dnf install --nogpgcheck ./pryn-0.1.1-1.x86_64.rpm</code><button class="copy-button" type="button" data-copy="fedora" aria-label="Copy Fedora install command">Copy</button></div>
+              </div>
+              <details class="secondary-install"><summary>Using openSUSE instead?</summary><p>Download the same RPM above, then run:</p><div class="code-row"><code data-command="opensuse">cd ~/Downloads &amp;&amp; sudo zypper install --allow-unsigned-rpm ./pryn-0.1.1-1.x86_64.rpm</code><button class="copy-button" type="button" data-copy="opensuse" aria-label="Copy openSUSE install command">Copy</button></div><small>openSUSE is an intended target, not yet included in the CI smoke tests.</small></details>
+            </div>
+            <p class="panel-footnote">The RPM is unsigned. Only install it if you trust the release source and have checked the checksum.</p>
+          </article>
 
-            <article class="install-panel" role="tabpanel" id="panel-arch" aria-labelledby="tab-arch" data-panel="arch" hidden>
-              <div class="panel-topline"><span class="package-tag">ARCH PACKAGE RECIPE</span><span class="pending-tag">AUR SUBMISSION PENDING</span></div>
-              <h3>Arch Linux</h3>
-              <p class="panel-description">A PKGBUILD is included in the release. Build a local package around the precompiled binary; Cargo is not involved.</p>
-              <div class="asset-row"><div><b>pryn-bin.PKGBUILD</b><small>Local makepkg recipe · x86_64</small></div><a class="download-link" data-asset="pkgbuild" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-bin.PKGBUILD" download aria-label="Download Arch PKGBUILD">↓</a></div>
-              <div class="command-label"><span>BUILD & INSTALL LOCALLY</span><button class="copy-button" data-copy="arch">COPY COMMAND ↗</button></div>
-              <pre class="command-box" id="command-arch"><code>sudo pacman -S --needed base-devel curl
-mkdir -p ~/build/pryn-bin && cd ~/build/pryn-bin
-curl -fL https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-bin.PKGBUILD -o PKGBUILD
-makepkg --printsrcinfo > .SRCINFO
+          <article class="distro-panel" id="panel-arch" role="tabpanel" aria-labelledby="tab-arch" data-panel="arch" hidden>
+            <div class="panel-heading">
+              <div><span class="package-label">ARCH PACKAGE RECIPE</span><h3>Arch Linux</h3><p>Build a local pacman package around the prebuilt binary. No Rust compilation.</p></div>
+              <span class="pending-label" id="arch-status">AUR submission pending</span>
+            </div>
+            <div id="arch-manual">
+              <div class="install-steps">
+                <div class="install-step">
+                  <div class="step-heading"><span class="step-number">1</span><div><strong>Download the PKGBUILD</strong><small>Save the recipe to your Downloads folder.</small></div></div>
+                  <div class="download-row"><span class="file-name" data-file="pkgbuild">pryn-bin.PKGBUILD</span><a class="download-button" data-asset="pkgbuild" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-bin.PKGBUILD" target="_blank" rel="noreferrer">Download PKGBUILD <span aria-hidden="true">↓</span></a></div>
+                </div>
+                <div class="install-step">
+                  <div class="step-heading"><span class="step-number">2</span><div><strong>Build and install</strong><small>First install Arch's standard package build tools.</small></div></div>
+                  <div class="code-row code-row-tall"><code data-command="arch">sudo pacman -S --needed base-devel
+mkdir -p ~/build/pryn-bin
+cp ~/Downloads/pryn-bin.PKGBUILD ~/build/pryn-bin/PKGBUILD
+cd ~/build/pryn-bin
+makepkg --printsrcinfo &gt; .SRCINFO
 makepkg --verifysource
-makepkg -si</code></pre>
-              <div class="callout"><b>Why not yay yet?</b><span>The recipe has not been submitted to the AUR. <code>yay -S pryn-bin</code> will work only after the package is published and searchable.</span></div>
-            </article>
+makepkg -si</code><button class="copy-button" type="button" data-copy="arch" aria-label="Copy Arch installation commands">Copy</button></div>
+                </div>
+              </div>
+              <p class="panel-footnote">The PKGBUILD downloads the static release archive and verifies its pinned SHA-256 checksum. It does not build PRYN from source.</p>
+            </div>
+            <div id="arch-aur" hidden>
+              <div class="aur-ready"><strong>PRYN is available in the AUR.</strong><p>Install the community package with your AUR helper.</p><div class="code-row"><code data-command="aur">yay -S pryn-bin</code><button class="copy-button" type="button" data-copy="aur" aria-label="Copy AUR install command">Copy</button></div><a class="text-link" id="aur-link" href="https://aur.archlinux.org/packages/pryn-bin" target="_blank" rel="noreferrer">View package in AUR ↗</a></div>
+            </div>
+          </article>
 
-            <article class="install-panel" role="tabpanel" id="panel-generic" aria-labelledby="tab-generic" data-panel="generic" hidden>
-              <div class="panel-topline"><span class="package-tag">STATIC MUSL ARCHIVE</span><span class="tested-tag">ALPINE CI-TESTED</span></div>
-              <h3>Alpine & other x86_64 Linux</h3>
-              <p class="panel-description">The universal archive contains the same static executable. Extract it and install it in your user bin directory.</p>
-              <div class="asset-row"><div><b>pryn-v<span data-version>0.1.1</span>-x86_64-unknown-linux-musl.tar.gz</b><small>Generic Linux archive · x86_64</small></div><a class="download-link" data-asset="archive" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz" download aria-label="Download static Linux archive">↓</a></div>
-              <div class="command-label"><span>EXTRACT & INSTALL</span><button class="copy-button" data-copy="generic">COPY COMMAND ↗</button></div>
-              <pre class="command-box" id="command-generic"><code>curl -fLO https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz
-tar -xzf pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz
-mkdir -p "$HOME/.local/bin"
-install -m 755 pryn-v0.1.1/pryn "$HOME/.local/bin/pryn"</code></pre>
-              <p class="panel-note">Ensure <code>~/.local/bin</code> is on your PATH. Alpine container startup passed; physical Alpine hardware integration is not yet validated.</p>
-            </article>
-          </div>
+          <article class="distro-panel" id="panel-other" role="tabpanel" aria-labelledby="tab-other" data-panel="other" hidden>
+            <div class="panel-heading">
+              <div><span class="package-label">STATIC MUSL ARCHIVE</span><h3>Alpine & other x86_64 Linux</h3><p>Use the portable executable when there is no native package for your distro.</p></div>
+              <span class="test-label">Alpine container tested</span>
+            </div>
+            <div class="install-steps">
+              <div class="install-step">
+                <div class="step-heading"><span class="step-number">1</span><div><strong>Download the archive</strong><small>Save it to your Downloads folder.</small></div></div>
+                <div class="download-row"><span class="file-name" data-file="archive">pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz</span><a class="download-button" data-asset="archive" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz" target="_blank" rel="noreferrer">Download archive <span aria-hidden="true">↓</span></a></div>
+              </div>
+              <div class="install-step">
+                <div class="step-heading"><span class="step-number">2</span><div><strong>Extract and install</strong><small>Installs PRYN for your user, not system-wide.</small></div></div>
+                <div class="code-row"><code data-command="other">cd ~/Downloads &amp;&amp; tar -xzf pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz &amp;&amp; install -Dm755 pryn-v0.1.1/pryn ~/.local/bin/pryn</code><button class="copy-button" type="button" data-copy="other" aria-label="Copy archive installation command">Copy</button></div>
+              </div>
+            </div>
+            <p class="panel-footnote">If <code>pryn</code> is not found after installation, run <code>~/.local/bin/pryn --version</code> or add <code>~/.local/bin</code> to your PATH.</p>
+          </article>
         </div>
-        <div class="console-foot"><span>ARCHITECTURE: X86_64 / AMD64</span><span>PREBUILT · NO RUST TOOLCHAIN</span></div>
+        <div class="installer-footer"><span>RELEASE <strong id="installer-version">0.1.1</strong></span><span>LINUX <strong>x86_64</strong></span><a href="https://github.com/MQSethar/pryn/releases/latest" target="_blank" rel="noreferrer">All release files ↗</a></div>
       </div>
-      <div class="checksum-strip">
-        <div><span class="eyebrow">INTEGRITY CHECK</span><b>Verify the file you downloaded.</b><p>Checksums are published with every GitHub release. The current assets are not cryptographically signed.</p></div>
-        <div class="checksum-command"><code>curl -fLO https://github.com/MQSethar/pryn/releases/download/v0.1.1/SHA256SUMS<br>sha256sum --ignore-missing --check SHA256SUMS</code><button class="copy-button" data-copy="checksum">COPY ↗</button></div>
-      </div>
+
+      <details class="checksum-details">
+        <summary>Want to verify the download?</summary>
+        <p>Download the checksum file, then run this in your Downloads folder. It verifies any PRYN release files you downloaded.</p>
+        <div class="code-row"><code data-command="checksum">cd ~/Downloads &amp;&amp; curl -fLO https://github.com/MQSethar/pryn/releases/download/v0.1.1/SHA256SUMS &amp;&amp; sha256sum --ignore-missing --check SHA256SUMS</code><button class="copy-button" type="button" data-copy="checksum" aria-label="Copy checksum verification command">Copy</button></div>
+        <p class="security-note">Checksums detect accidental corruption. The current release assets are not cryptographically signed, so a checksum from the same GitHub release is not independent proof of publisher identity.</p>
+      </details>
     </section>
 
-    <section class="capabilities-section shell" id="capabilities">
-      <div class="section-head">
-        <div><p class="eyebrow">03 / WHAT YOU GET</p><h2>Observe first.<br><span>Never make things worse.</span></h2></div>
-        <p class="section-aside">PRYN reads system state and reports the evidence. It does not silently change your machine to manufacture a successful result.</p>
+    <section class="capabilities-section wrap" id="capabilities">
+      <div class="section-heading">
+        <div><p class="section-kicker">02 / WHAT IT CHECKS</p><h2>Three systems. One report.</h2></div>
+        <p class="section-intro">PRYN gathers what Linux exposes and keeps facts separate from assumptions.</p>
       </div>
       <div class="capability-grid">
-        <article class="capability-card"><span class="cap-number">01</span><div class="cap-icon">⌁</div><h3>Wi-Fi</h3><p>Interfaces, drivers, radio state, manager state, IP addresses, routes and DNS configuration.</p><span class="cap-foot">NETWORK STATE</span></article>
-        <article class="capability-card"><span class="cap-number">02</span><div class="cap-icon">⌁</div><h3>Bluetooth</h3><p>Controllers, rfkill, BlueZ availability, adapter power, paired devices and connection state.</p><span class="cap-foot">DEVICE STATE</span></article>
-        <article class="capability-card"><span class="cap-number">03</span><div class="cap-icon">◒</div><h3>Audio</h3><p>ALSA cards, PipeWire/PulseAudio endpoints, defaults, mute, volume, ports and profiles.</p><span class="cap-foot">AUDIO GRAPH</span></article>
+        <article class="capability-card">
+          <div class="capability-icon wifi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 8.8a14.2 14.2 0 0 1 19 0M5.8 12.2a9.3 9.3 0 0 1 12.4 0m-9 3.5a4.1 4.1 0 0 1 5.6 0M12 19h.01"/></svg></div>
+          <h3>Wi-Fi</h3><p>Interfaces, drivers, radio state, NetworkManager or iwd, IP addresses, routes and DNS configuration.</p>
+        </article>
+        <article class="capability-card">
+          <div class="capability-icon bluetooth-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg></div>
+          <h3>Bluetooth</h3><p>Controllers, radio blocks, BlueZ, adapter power, paired devices and connection state.</p>
+        </article>
+        <article class="capability-card">
+          <div class="capability-icon audio-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4m4-8v12m4-15v18m4-13v8m4-11v14m4-10v6"/></svg></div>
+          <h3>Audio</h3><p>ALSA cards, PipeWire/PulseAudio endpoints, defaults, mute, volume, ports and profiles.</p>
+        </article>
       </div>
-      <div class="principle-line"><span>UNKNOWN IS A VALID RESULT.</span><span>MISSING DATA IS NOT SUCCESS.</span><span>NO ROOT REQUIRED FOR CHECKS.</span></div>
     </section>
 
-    <section class="requirements-section shell">
-      <div class="requirements-copy"><p class="eyebrow">04 / SMALL PRINT, IMPORTANT PRINT</p><h2>Standalone binary.<br><span>Optional host services.</span></h2><p>The executable does not need Rust, Cargo, glibc, or shared runtime libraries. The services PRYN observes are separate and remain optional.</p></div>
+    <section class="principles-section wrap" id="principles">
+      <div class="principles-copy"><p class="section-kicker">03 / BUILT TO BE SAFE</p><h2>Read-only by design.</h2><p>PRYN observes your system. It never changes it to make a report look better.</p></div>
+      <div class="principle-list">
+        <div><span class="principle-mark">01</span><strong>No automatic fixes</strong><span>Never changes settings or restarts services.</span></div>
+        <div><span class="principle-mark">02</span><strong>No background daemon</strong><span>Runs when you ask it to run.</span></div>
+        <div><span class="principle-mark">03</span><strong>Unknown stays unknown</strong><span>Missing evidence is never reported as success.</span></div>
+      </div>
+    </section>
+
+    <section class="requirements-section wrap">
+      <div class="section-heading compact-heading">
+        <div><p class="section-kicker">04 / WHAT IT NEEDS</p><h2>Small executable.<br>Optional system services.</h2></div>
+        <p class="section-intro">The prebuilt binary does not need Rust, Cargo, glibc or shared runtime libraries. The services below are inspected if your system has them; PRYN does not install them.</p>
+      </div>
       <div class="requirements-list">
-        <div><b>NetworkManager / iwd</b><span>Wi-Fi manager observations</span><em>OPTIONAL</em></div>
-        <div><b>BlueZ</b><span>Bluetooth adapter and device state</span><em>OPTIONAL</em></div>
-        <div><b>ALSA / PulseAudio socket</b><span>Hardware and audio-server details</span><em>OPTIONAL</em></div>
-        <div><b>pw-dump / iproute2</b><span>Additional PipeWire and route data</span><em>OPTIONAL</em></div>
+        <div><strong>NetworkManager or iwd</strong><span>Wi-Fi manager details</span><em>Optional</em></div>
+        <div><strong>BlueZ</strong><span>Bluetooth adapter and device state</span><em>Optional</em></div>
+        <div><strong>ALSA / PulseAudio socket</strong><span>Hardware and audio-server details</span><em>Optional</em></div>
+        <div><strong>pw-dump / iproute2</strong><span>Additional PipeWire and route data</span><em>Optional</em></div>
       </div>
     </section>
 
-    <section class="final-cta shell">
-      <div><p class="eyebrow">05 / OPEN SOURCE · READ-ONLY · LINUX</p><h2>Start with what<br>your system knows.</h2></div>
-      <div class="final-actions"><a class="button button-light" href="https://github.com/MQSethar/pryn/releases/latest">Download v0.1.1 ↗</a><a class="text-link" href="https://github.com/MQSethar/pryn/issues">Report an issue <span>↗</span></a></div>
+    <section class="docs-section wrap" id="docs">
+      <div class="section-heading">
+        <div><p class="section-kicker">05 / LEARN MORE</p><h2>Only what you need.</h2></div>
+        <p class="section-intro">Installation first. Technical details when you need them.</p>
+      </div>
+      <div class="docs-grid">
+        <a class="doc-link" href="https://github.com/MQSethar/pryn/blob/main/docs/installation.md"><span>01</span><strong>Installation guide</strong><small>All package methods, updates and removal.</small><b aria-hidden="true">↗</b></a>
+        <a class="doc-link" href="https://github.com/MQSethar/pryn/blob/main/docs/results.md"><span>02</span><strong>Understand results</strong><small>What pass, warning and unknown mean.</small><b aria-hidden="true">↗</b></a>
+        <a class="doc-link" href="https://github.com/MQSethar/pryn/blob/main/docs/support-matrix.md"><span>03</span><strong>Compatibility</strong><small>Tested distributions and current limits.</small><b aria-hidden="true">↗</b></a>
+        <a class="doc-link" href="https://github.com/MQSethar/pryn/issues"><span>04</span><strong>Get support</strong><small>Report a bug or request a change.</small><b aria-hidden="true">↗</b></a>
+      </div>
+    </section>
+
+    <section class="closing-section wrap">
+      <div><p class="section-kicker">OPEN SOURCE · LINUX · READ-ONLY</p><h2>Start with the facts.</h2><p>Install PRYN and see what your system can confirm.</p></div>
+      <a class="button button-primary" href="#install">Install PRYN <span aria-hidden="true">↑</span></a>
     </section>
   </main>
 
-  <footer class="footer shell"><a class="brand footer-brand" href="#top"><span class="brand-mark">P</span><span>PRYN</span></a><span>READ-ONLY LINUX DIAGNOSTICS</span><div><a href="https://github.com/MQSethar/pryn">GITHUB</a><a href="https://crates.io/crates/pryn">CRATES.IO</a><a href="https://github.com/MQSethar/pryn/blob/main/LICENSE-MIT">LICENSE</a></div><span class="footer-copy">© 2026 PRYN CONTRIBUTORS</span></footer>
-  <div class="toast" role="status" aria-live="polite" id="toast"></div>
+  <footer class="site-footer">
+    <div class="footer-inner wrap">
+      <a class="brand footer-brand" href="#top"><img src="./assets/pryn-mark.svg" alt="" width="30" height="30"><span>PRYN</span></a>
+      <span class="footer-note">Read-only Linux diagnostics.</span>
+      <div class="footer-links"><a href="https://github.com/MQSethar/pryn">GitHub</a><a href="https://crates.io/crates/pryn">crates.io</a><a href="https://github.com/MQSethar/pryn/blob/main/LICENSE-MIT">License</a></div>
+      <span class="copyright">© 2026 PRYN contributors</span>
+    </div>
+  </footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
