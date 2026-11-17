@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07070a">
+  <meta name="description" content="Step-by-step PRYN installation instructions for Ubuntu, Debian, Kali, Fedora, Arch Linux, Alpine and other x86_64 Linux distributions.">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="https://pryn.qasimio.me/install/">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="PRYN">
+  <meta property="og:title" content="Install PRYN on Linux — Complete Guide">
+  <meta property="og:description" content="Choose your distribution and install the prebuilt PRYN binary. No Rust or Cargo required.">
+  <meta property="og:url" content="https://pryn.qasimio.me/install/">
+  <meta property="og:image" content="https://pryn.qasimio.me/assets/social-preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>Install PRYN on Linux — Complete Guide</title>
+  <link rel="stylesheet" href="../styles.css">
+  <script src="../app.js" defer></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "PRYN", "item": "https://pryn.qasimio.me/" },
+      { "@type": "ListItem", "position": 2, "name": "Install PRYN on Linux", "item": "https://pryn.qasimio.me/install/" }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="../" aria-label="PRYN home"><span class="brand-symbol">P</span><span class="brand-name">pryn<span class="brand-period">.</span></span></a>
+    <nav class="main-nav" id="main-nav" aria-label="Main navigation">
+      <a href="../#install">Quick install</a>
+      <a href="../#features">What it checks</a>
+      <a href="https://github.com/MQSethar/pryn">Source</a>
+    </nav>
+    <div class="header-actions"><a class="nav-github" href="https://github.com/MQSethar/pryn">GitHub ↗</a><a class="button button-small button-primary" href="https://github.com/MQSethar/pryn/releases/latest">Latest release ↓</a></div>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Open menu"><span></span><span></span></button>
+  </header>
+
+  <main id="main" class="section-wrap">
+    <section class="guide-hero">
+      <p class="section-kicker">PRYN / DOCUMENTATION / INSTALLATION</p>
+      <h1>Install PRYN on Linux<span>.</span><br><span>One guide. Every supported route.</span></h1>
+      <p>These instructions install the prebuilt x86_64 executable. You do not need Rust, Cargo, a compiler, glibc or shared runtime libraries. Choose the section for your distribution.</p>
+      <div class="hero-buttons"><a class="button button-primary" href="../#install">Choose my package ↓</a><a class="button button-secondary" href="https://github.com/MQSethar/pryn/releases/tag/v0.1.1">View v0.1.1 assets ↗</a></div>
+    </section>
+
+    <div class="guide-layout">
+      <aside class="guide-toc" aria-label="On this page">
+        <b>ON THIS PAGE</b>
+        <a href="#before">Before you install</a>
+        <a href="#debian">Ubuntu / Debian / Kali</a>
+        <a href="#fedora">Fedora / RPM</a>
+        <a href="#opensuse">openSUSE</a>
+        <a href="#arch">Arch Linux</a>
+        <a href="#generic">Alpine / Other</a>
+        <a href="#verify">Verify installation</a>
+        <a href="#update">Update / uninstall</a>
+        <a href="#services">Optional services</a>
+      </aside>
+
+      <article class="guide-content">
+        <section id="before">
+          <h2>1. Before you install</h2>
+          <ul>
+            <li><strong>Architecture:</strong> the v0.1.1 prebuilt release supports x86_64 / amd64 only. ARM64 / aarch64 is not available yet.</li>
+            <li><strong>Internet:</strong> you need access to GitHub Releases to download the files.</li>
+            <li><strong>Privileges:</strong> installing a system package needs administrator privileges. Running PRYN does not.</li>
+            <li><strong>Runtime:</strong> the prebuilt executable is static. Rust, Cargo, a compiler, glibc and shared runtime libraries are not required.</li>
+            <li><strong>Package trust:</strong> release assets include SHA-256 checksums, but are not cryptographically signed. The RPM is unsigned. Read <a href="#verify">the checksum and trust note</a> before installing.</li>
+          </ul>
+          <pre class="command-block"><code>uname -m</code></pre>
+          <p>The expected output is <code>x86_64</code>. If your system reports <code>aarch64</code>, the prebuilt release is not for your machine.</p>
+        </section>
+
+        <section id="debian">
+          <h2>2. Ubuntu, Debian, Kali and derivatives</h2>
+          <p>Use the amd64 <code>.deb</code> package. The current release asset is <a href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn_0.1.1_amd64.deb">pryn_0.1.1_amd64.deb</a>.</p>
+          <pre class="command-block"><code>curl -fLO https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn_0.1.1_amd64.deb
+sudo apt install ./pryn_0.1.1_amd64.deb</code></pre>
+          <p>APT installs the local package file. This does not add a PRYN APT repository. The command <code>sudo apt install pryn</code> without a local file will not work from the default Ubuntu/Debian repositories.</p>
+          <div class="guide-callout">Automated container smoke tests passed on Ubuntu 26.04, Debian 13 and Kali Rolling. Linux Mint and Pop!_OS are intended compatible derivatives, but have not been individually tested.</div>
+        </section>
+
+        <section id="fedora">
+          <h2>3. Fedora and RPM distributions</h2>
+          <p>Use <a href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-0.1.1-1.x86_64.rpm">pryn-0.1.1-1.x86_64.rpm</a>. The RPM is unsigned, so DNF must skip signature verification for this specific local file.</p>
+          <pre class="command-block"><code>curl -fLO https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-0.1.1-1.x86_64.rpm
+sudo dnf install --nogpgcheck ./pryn-0.1.1-1.x86_64.rpm</code></pre>
+          <p>Only use the file from the official PRYN release and verify its SHA-256 checksum first. Fedora is the automated RPM smoke-test target. Rocky Linux, AlmaLinux and RHEL are intended RPM-family targets, not individually validated yet.</p>
+        </section>
+
+        <section id="opensuse">
+          <h2>4. openSUSE</h2>
+          <p>The same x86_64 RPM is the intended local package. openSUSE is not yet in the automated smoke-test matrix.</p>
+          <pre class="command-block"><code>curl -fLO https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-0.1.1-1.x86_64.rpm
+sudo zypper install --allow-unsigned-rpm ./pryn-0.1.1-1.x86_64.rpm</code></pre>
+          <div class="guide-callout">The RPM is unsigned. The command allows this local RPM to be installed without a package signature. Verify the file checksum and confirm that you trust the release source before continuing.</div>
+        </section>
+
+        <section id="arch">
+          <h2>5. Arch Linux</h2>
+          <p>The release includes a generated PKGBUILD for <strong><code>pryn-bin</code></strong>. The <code>-bin</code> suffix is the Arch convention for a package that installs a prebuilt binary. It installs the executable named <code>pryn</code>.</p>
+          <div class="guide-callout">AUR status: <strong>not published yet</strong>. The command <code>yay -S pryn-bin</code> will work only after the package is submitted and appears in the AUR. Until then, build the local package as shown below.</div>
+          <h3>Install and build the local package</h3>
+          <pre class="command-block"><code>sudo pacman -S --needed base-devel curl
+mkdir -p ~/build/pryn-bin
+cd ~/build/pryn-bin
+
+curl -fL https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-bin.PKGBUILD -o PKGBUILD
+
+makepkg --printsrcinfo > .SRCINFO
+makepkg --verifysource
+makepkg -si</code></pre>
+          <p>This uses <code>makepkg</code> to package the precompiled executable. It does not compile PRYN from Rust source and does not need Cargo. The PKGBUILD pins the SHA-256 of the corresponding release archive.</p>
+          <h3>After AUR publication</h3>
+          <pre class="command-block"><code>yay -S pryn-bin</code></pre>
+          <p>The package name remains <code>pryn-bin</code>; the command users run after installation remains <code>pryn</code>.</p>
+          <p>See the <a href="https://wiki.archlinux.org/title/AUR_submission_guidelines">ArchWiki AUR submission guidelines</a> for the package repository and maintenance rules.</p>
+        </section>
+
+        <section id="generic">
+          <h2>6. Alpine and other compatible x86_64 Linux</h2>
+          <p>Use the generic static-musl archive: <a href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz">pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz</a>.</p>
+          <pre class="command-block"><code>curl -fLO https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz
+tar -xzf pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz
+mkdir -p "$HOME/.local/bin"
+install -m 755 pryn-v0.1.1/pryn "$HOME/.local/bin/pryn"
+"$HOME/.local/bin/pryn" --version</code></pre>
+          <p>Make sure <code>$HOME/.local/bin</code> is on your <code>PATH</code>. If it is not, add the following line to your shell startup file:</p>
+          <pre class="command-block"><code>export PATH="$HOME/.local/bin:$PATH"</code></pre>
+          <p>The archive passed an Alpine container startup smoke test. Alpine's physical hardware and service integration has not been validated on a physical Alpine machine.</p>
+        </section>
+
+        <section id="verify">
+          <h2>7. Verify the download and run PRYN</h2>
+          <p>Download <code>SHA256SUMS</code> beside the package or archive you downloaded, then check the files in the current directory:</p>
+          <pre class="command-block"><code>curl -fLO https://github.com/MQSethar/pryn/releases/download/v0.1.1/SHA256SUMS
+sha256sum --ignore-missing --check SHA256SUMS</code></pre>
+          <p>A checksum detects accidental corruption. Because the checksum file and package are hosted in the same release, it does not independently prove who published them. Cryptographic release signatures and signed package repositories are deferred.</p>
+          <h3>Check the installation</h3>
+          <pre class="command-block"><code>pryn --version
+pryn --help
+pryn check
+pryn check wifi
+pryn check bluetooth
+pryn check audio</code></pre>
+          <p>PRYN does not need <code>sudo</code> to run its supported checks. Exit code <code>1</code> means the diagnostic report contains a warning, problem, unknown, partial or unimplemented result. It does not necessarily mean that the program crashed.</p>
+        </section>
+
+        <section id="update">
+          <h2>8. Update and uninstall</h2>
+          <p>For a future release, download the matching versioned package or archive from the <a href="https://github.com/MQSethar/pryn/releases">GitHub Releases page</a>, verify its checksum, and install it over the existing version using the same package-manager command.</p>
+          <p>Direct-download DEB and RPM packages do not update automatically. PRYN does not operate a hosted APT or RPM repository yet.</p>
+          <h3>Uninstall</h3>
+          <table class="guide-table">
+            <thead><tr><th>Installation type</th><th>Remove command</th></tr></thead>
+            <tbody>
+              <tr><td>Debian / Ubuntu / Kali</td><td><code>sudo apt remove pryn</code></td></tr>
+              <tr><td>Fedora</td><td><code>sudo dnf remove pryn</code></td></tr>
+              <tr><td>openSUSE</td><td><code>sudo zypper remove pryn</code></td></tr>
+              <tr><td>Arch local package / AUR</td><td><code>sudo pacman -R pryn-bin</code></td></tr>
+              <tr><td>Generic archive in ~/.local/bin</td><td><code>rm -f "$HOME/.local/bin/pryn"</code></td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="services">
+          <h2>9. Optional host services</h2>
+          <p>PRYN installs only its own executable and documentation. It does not install, enable, start or manage the host services it observes.</p>
+          <table class="guide-table">
+            <thead><tr><th>Capability</th><th>Host component</th><th>Required to install PRYN?</th></tr></thead>
+            <tbody>
+              <tr><td>Wi-Fi manager state</td><td>NetworkManager or standalone iwd over system D-Bus</td><td>No</td></tr>
+              <tr><td>Bluetooth state</td><td>BlueZ over system D-Bus</td><td>No</td></tr>
+              <tr><td>Audio server details</td><td>PulseAudio-compatible user socket</td><td>No</td></tr>
+              <tr><td>Native PipeWire graph</td><td><code>pw-dump</code></td><td>No, optional enhancement</td></tr>
+              <tr><td>IP addresses and routes</td><td><code>ip</code> from iproute2</td><td>No, observations may be unknown without it</td></tr>
+              <tr><td>DNS configuration</td><td><code>/etc/resolv.conf</code></td><td>No</td></tr>
+            </tbody>
+          </table>
+          <p>A successful package installation does not guarantee that every diagnostic category is available on that machine. Missing providers remain unavailable or unknown.</p>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer section-wrap">
+    <a class="brand footer-brand" href="../"><span class="brand-symbol">P</span><span class="brand-name">pryn<span class="brand-period">.</span></span></a>
+    <p>Read-only Linux diagnostics for Wi-Fi, Bluetooth and audio.</p>
+    <div class="footer-links"><a href="https://github.com/MQSethar/pryn">GitHub</a><a href="https://crates.io/crates/pryn">crates.io</a><a href="../">Home</a></div>
+    <span class="copyright">© 2026 PRYN contributors</span>
+  </footer>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
