@@ -1,104 +1,214 @@
-# Install PRYN
+# Install, update and remove PRYN
 
-**Current release: v0.1.1 · Linux x86_64 · prebuilt packages need no Rust or Cargo.**
+**Current release: v0.1.1 · Linux x86_64 / amd64**
 
-The easiest route is the [PRYN installation website](https://mqsethar.github.io/pryn/). Choose your Linux family, download the file, then copy the install command shown for it. The command installs the file you downloaded; it does not download the same file again.
+The easiest way to install PRYN is through the [PRYN installation website](https://pryn.qasimio.me/). Choose your Linux family, download the package, then copy the command shown for that package.
 
-All files are attached to the [v0.1.1 GitHub release](https://github.com/MQSethar/pryn/releases/tag/v0.1.1).
+Prebuilt packages do not require Rust or Cargo. ARM64/aarch64 is not supported yet.
+
+All prebuilt files are attached to the [v0.1.1 GitHub release](https://github.com/MQSethar/pryn/releases/tag/v0.1.1).
 
 ## Before you start
 
-Check your machine architecture:
+Check your architecture:
 
 ```bash
 uname -m
 ```
 
-It must print `x86_64`. ARM64/aarch64 is not available yet.
+It must print `x86_64`.
 
-Download the package using your browser. Unless you changed your browser's download location, it will be in `~/Downloads`. The commands below assume that location.
+Unless you choose another download location, save release files in `~/Downloads`. Commands below assume that location.
 
 ## Debian, Ubuntu, Kali and compatible derivatives
 
-Download `pryn_0.1.1_amd64.deb`, then install it:
+### Install
+
+Download `pryn_0.1.1_amd64.deb`, then run:
 
 ```bash
 cd ~/Downloads && sudo apt install ./pryn_0.1.1_amd64.deb
 ```
 
-The `.deb` was installed and executed in Ubuntu 26.04, Debian 13 and Kali Rolling CI containers. Linux Mint, Pop!_OS and other Debian/Ubuntu derivatives are expected to be compatible, but have not all been individually tested.
+The `.deb` passed container installation tests on Ubuntu 26.04, Debian 13 and Kali Rolling. Linux Mint and Pop!_OS are expected to be compatible but have not been individually tested.
 
-This installs a local package. It does not add a PRYN APT repository, so `sudo apt install pryn` without the downloaded file is not available yet.
+### Update
+
+Download the newer `.deb` from the latest release, then run the same command with its new filename:
+
+```bash
+cd ~/Downloads && sudo apt install ./pryn_0.1.1_amd64.deb
+```
+
+APT upgrades the installed package when the downloaded package has a newer version. Direct downloads do not update automatically.
+
+### Remove
+
+```bash
+sudo apt remove pryn
+```
+
+This removes the package but keeps system configuration files, if any.
 
 ## Fedora and compatible RPM distributions
 
-Download `pryn-0.1.1-1.x86_64.rpm`, then install it:
+### Install
+
+Download `pryn-0.1.1-1.x86_64.rpm`, then run:
 
 ```bash
 cd ~/Downloads && sudo dnf install --nogpgcheck ./pryn-0.1.1-1.x86_64.rpm
 ```
 
-The RPM is unsigned. `--nogpgcheck` skips package-signature verification for this local installation. Install it only when you trust the release source and have checked the published checksum. Fedora passed the CI container smoke test. RHEL, Rocky Linux and AlmaLinux are intended targets, not individually tested systems yet.
+The current RPM is unsigned. `--nogpgcheck` disables signature verification for this local installation command. Only install it if you trust the GitHub release and have checked the published SHA-256 checksum.
 
-### openSUSE
+Fedora passed the CI container smoke test. RHEL, Rocky Linux and AlmaLinux are intended targets but have not been individually tested.
 
-Download the same RPM and run:
+### Update
+
+Download the newer RPM, then run the same command with its new filename:
+
+```bash
+cd ~/Downloads && sudo dnf install --nogpgcheck ./pryn-0.1.1-1.x86_64.rpm
+```
+
+DNF installs the local package and upgrades the installed PRYN package when the downloaded version is newer.
+
+### Remove
+
+```bash
+sudo dnf remove pryn
+```
+
+## openSUSE
+
+openSUSE uses the same x86_64 RPM. It is an intended target, but is not currently in the automated smoke-test matrix.
+
+### Install
+
+Download `pryn-0.1.1-1.x86_64.rpm`, then run:
 
 ```bash
 cd ~/Downloads && sudo zypper install --allow-unsigned-rpm ./pryn-0.1.1-1.x86_64.rpm
 ```
 
-The package is unsigned. This is the documented local-install path, but openSUSE is not currently in the automated smoke-test matrix.
+The RPM is unsigned. `--allow-unsigned-rpm` allows this local package to be installed.
+
+### Update
+
+Download the newer RPM and run the same local install command with its new filename:
+
+```bash
+cd ~/Downloads && sudo zypper install --allow-unsigned-rpm ./pryn-0.1.1-1.x86_64.rpm
+```
+
+### Remove
+
+```bash
+sudo zypper remove pryn
+```
 
 ## Arch Linux
 
-The `pryn-bin` AUR package has **not** been published yet, so `yay -S pryn-bin` is not available.
+The `pryn-bin` AUR package has not been published yet. Until it is available in the AUR, install the prebuilt binary using the maintained [PRYN PKGBUILD](https://pryn.qasimio.me/assets/pryn-bin.PKGBUILD).
 
-You can install the prebuilt binary through the release PKGBUILD. Download `pryn-bin.PKGBUILD`, then run:
+### Install
+
+Download `pryn-bin.PKGBUILD` from the [PRYN website](https://pryn.qasimio.me/assets/pryn-bin.PKGBUILD), then run:
 
 ```bash
 sudo pacman -S --needed base-devel
 mkdir -p ~/build/pryn-bin
 cp ~/Downloads/pryn-bin.PKGBUILD ~/build/pryn-bin/PKGBUILD
 cd ~/build/pryn-bin
-makepkg --printsrcinfo > .SRCINFO
-makepkg --verifysource
 makepkg -si
 ```
 
-This builds an Arch package around the precompiled PRYN binary. It does not compile PRYN from Rust source and does not need Cargo. `makepkg` checks the source archive against the checksum pinned in the PKGBUILD.
+`makepkg` verifies the source archive against the checksum pinned in the PKGBUILD. It packages the already-built PRYN executable; it does not compile PRYN from Rust source.
 
-After the package is submitted and visible in the [AUR package index](https://aur.archlinux.org/packages/?K=pryn-bin), the normal AUR-helper installation will be:
+### Update
 
-```bash
-yay -S pryn-bin
-```
-
-## Alpine and other compatible x86_64 Linux distributions
-
-Download `pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz`, then extract and install it for your user:
+Download the latest `pryn-bin.PKGBUILD` from the website, replace the old recipe, then run:
 
 ```bash
-cd ~/Downloads && tar -xzf pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz && install -Dm755 pryn-v0.1.1/pryn ~/.local/bin/pryn
+cp -f ~/Downloads/pryn-bin.PKGBUILD ~/build/pryn-bin/PKGBUILD
+cd ~/build/pryn-bin
+makepkg -si
 ```
 
-Check it with:
+Use the same directory created during installation. If your browser renames a repeated download (for example, `pryn-bin (1).PKGBUILD`), rename it to `pryn-bin.PKGBUILD` before running the command.
+
+### Remove
 
 ```bash
-~/.local/bin/pryn --version
+sudo pacman -Rns pryn-bin
 ```
 
-If you want to run `pryn` without typing the full path, make sure `~/.local/bin` is in your shell's `PATH`. The archive passed the Alpine container startup test; Alpine hardware and service integration has not yet been validated on a physical Alpine machine.
-
-## Verify a downloaded file (optional)
-
-Download `SHA256SUMS` from the release and run:
+Once `pryn-bin` is actually published in the AUR, the shorter commands will be:
 
 ```bash
-cd ~/Downloads && curl -fLO https://github.com/MQSethar/pryn/releases/download/v0.1.1/SHA256SUMS && sha256sum --ignore-missing --check SHA256SUMS
+yay -S pryn-bin       # install
+yay -Syu pryn-bin     # update
+yay -Rns pryn-bin     # remove
 ```
 
-This checks any PRYN release files present in `~/Downloads`. Checksums detect accidental corruption. Because the checksum file and packages are hosted in the same GitHub release, this is not an independent publisher signature. The current release packages are unsigned.
+Do not use these AUR commands until the package page exists: https://aur.archlinux.org/packages/pryn-bin
+
+## Alpine and other compatible x86_64 Linux
+
+Use the static-musl archive when a native package is not available.
+
+### Install
+
+Download `pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz`, then run:
+
+```bash
+mkdir -p ~/.local/bin
+tar -xzf ~/Downloads/pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz -C /tmp
+install -Dm755 /tmp/pryn-v0.1.1/pryn ~/.local/bin/pryn
+```
+
+### Update
+
+Download the newer archive, then run the same extraction and install steps using its versioned directory and filename. The final `install` command replaces the executable in `~/.local/bin`.
+
+### Remove
+
+```bash
+rm -f ~/.local/bin/pryn
+```
+
+If `pryn` is not found after installation, run `~/.local/bin/pryn --version` or ensure `~/.local/bin` is on your shell's `PATH`.
+
+The archive passed an Alpine container startup test. Physical Alpine hardware and service integration have not been validated.
+
+## Install, update or remove with Cargo
+
+Use Cargo if you already have Rust installed or specifically want Cargo to manage PRYN. Cargo compiles the published crate on your machine. It requires Rust and Cargo; this is not the prebuilt-package route.
+
+Run these commands as your normal user. Do not use `sudo`.
+
+### Install
+
+```bash
+cargo install pryn --locked
+```
+
+### Update
+
+```bash
+cargo install pryn --locked --force
+```
+
+`--force` replaces the installed Cargo-managed binary with the latest published crate version.
+
+### Remove
+
+```bash
+cargo uninstall pryn
+```
+
+Cargo normally places the executable in `~/.cargo/bin/pryn`. Make sure that directory is on your `PATH`.
 
 ## Check that PRYN works
 
@@ -109,52 +219,47 @@ pryn --version
 pryn check
 ```
 
-To inspect one area:
+PRYN does not need `sudo` for its supported checks.
+
+Exit code `1` means the report was completed but contains a warning, problem, unknown, partial or unimplemented result. It does not necessarily mean the program crashed.
+
+## Important: remove PRYN using the same method you installed it with
+
+| Installed with | Update with | Remove with |
+|---|---|---|
+| APT `.deb` | `sudo apt install ./new-file.deb` | `sudo apt remove pryn` |
+| DNF `.rpm` | `sudo dnf install --nogpgcheck ./new-file.rpm` | `sudo dnf remove pryn` |
+| Zypper `.rpm` | `sudo zypper install --allow-unsigned-rpm ./new-file.rpm` | `sudo zypper remove pryn` |
+| Local Arch PKGBUILD | Download new PKGBUILD, then `makepkg -si` | `sudo pacman -Rns pryn-bin` |
+| AUR, when published | `yay -Syu pryn-bin` | `yay -Rns pryn-bin` |
+| Static archive | Replace `~/.local/bin/pryn` | `rm -f ~/.local/bin/pryn` |
+| Cargo | `cargo install pryn --locked --force` | `cargo uninstall pryn` |
+
+Do not mix installation methods. For example, `cargo uninstall pryn` does not remove an APT-managed or pacman-managed package.
+
+## Optional: verify the downloaded file
+
+The release includes `SHA256SUMS`. Download the checksum file and verify the assets you downloaded:
 
 ```bash
-pryn check wifi
-pryn check bluetooth
-pryn check audio
+cd ~/Downloads
+curl -fLO https://github.com/MQSethar/pryn/releases/download/v0.1.1/SHA256SUMS
+sha256sum --ignore-missing --check SHA256SUMS
 ```
 
-To print detailed evidence or JSON:
-
-```bash
-pryn check --verbose
-pryn check --format json
-```
-
-PRYN is read-only and does not need `sudo` to run its supported checks. Exit code `1` means the report contains a warning, problem, unknown, partial or unimplemented result; it does not necessarily mean the program crashed.
-
-## Updating and uninstalling
-
-For a future release, download the new version's package and install it over the current version using the same command with the new filename. Direct-download packages do not update automatically. APT/RPM repositories are not provided yet.
-
-Remove PRYN with the package manager used to install it:
-
-```bash
-sudo apt remove pryn       # Debian / Ubuntu / Kali
-sudo dnf remove pryn       # Fedora
-sudo zypper remove pryn     # openSUSE
-sudo pacman -R pryn-bin     # local Arch package
-```
-
-For the generic archive:
-
-```bash
-rm -f ~/.local/bin/pryn
-```
+Checksums detect accidental corruption. Because the checksum and packages are hosted in the same release, this is not an independent publisher signature. The current release packages are unsigned.
 
 ## What PRYN does not install
 
-PRYN only inspects host services. These are optional and are not bundled with the executable:
+PRYN observes host services; it does not install or manage them.
 
-| Host component | What PRYN can inspect |
+| Optional host component | What PRYN can inspect |
 |---|---|
 | NetworkManager or standalone iwd | Wi-Fi manager state |
 | BlueZ | Bluetooth adapter and device state |
 | ALSA and a PulseAudio-compatible socket | Audio hardware and server details |
 | `pw-dump` | Additional native PipeWire graph details |
 | `ip` from iproute2 | IP addresses and routes |
+| `/etc/resolv.conf` | Configured DNS nameservers |
 
-A missing service does not prevent PRYN from installing or starting. Its related checks may be reported as unavailable or unknown. See the [support matrix](support-matrix.md) for the difference between container smoke tests and real-machine validation.
+A missing service does not prevent PRYN from installing or starting. Related checks may be unavailable or unknown. See the [support matrix](support-matrix.md) for the difference between container smoke tests and real-machine validation.

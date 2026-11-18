@@ -9,20 +9,14 @@ PRYN checks what Linux exposes, explains what it can confirm, and suggests safe 
 [![crates.io](https://img.shields.io/crates/v/pryn.svg)](https://crates.io/crates/pryn)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 
-## Install
+## Start here
 
 **Prebuilt release: v0.1.1 · Linux x86_64 · no Rust or Cargo required.**
 
-**[Open the PRYN installation website](https://mqsethar.github.io/pryn/)** for the distro selector, direct downloads and the exact install command for each package.
-
-The [step-by-step installation guide](docs/installation.md) is available in the repository. All release assets are on [GitHub Releases](https://github.com/MQSethar/pryn/releases/latest).
-
-| Linux family | Package | Current installation path |
-|---|---|---|
-| Debian / Ubuntu / Kali | `.deb` | Download, then `sudo apt install ./pryn_0.1.1_amd64.deb` |
-| Fedora / RPM | `.rpm` | Download, then `sudo dnf install --nogpgcheck ./pryn-0.1.1-1.x86_64.rpm` |
-| Arch | PKGBUILD | Download the recipe, then build with `makepkg -si`; AUR submission is pending |
-| Alpine / other compatible x86_64 Linux | Static musl archive | Extract and install the executable into `~/.local/bin` |
+- **[PRYN website](https://pryn.qasimio.me/)** — what PRYN does, what it checks and how to get started.
+- **[Install, update or remove PRYN](https://pryn.qasimio.me/install.html)** — distro-specific commands, including Cargo.
+- **[Documentation](https://pryn.qasimio.me/docs/)** — commands, result meanings, diagnostic scope, privacy and compatibility.
+- [All release downloads](https://github.com/MQSethar/pryn/releases/latest)
 
 The release packages contain the same statically linked x86_64 musl executable. ARM64/aarch64 is not supported yet. Direct-download `.deb` and `.rpm` files are not hosted package repositories; the RPM is unsigned. SHA-256 checksums are provided, but they are not publisher signatures.
 
@@ -70,6 +64,18 @@ This route requires Rust and Cargo:
 
 ```bash
 cargo install pryn --locked
+```
+
+To update a Cargo installation:
+
+```bash
+cargo install pryn --locked --force
+```
+
+To remove it:
+
+```bash
+cargo uninstall pryn
 ```
 
 For development, see `CONTRIBUTING.md` and the pinned toolchain in `rust-toolchain.toml`.

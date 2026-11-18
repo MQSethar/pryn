@@ -8,5 +8,6 @@
   "rpmAsset": "pryn-0.1.1-1.x86_64.rpm",
   "archiveAsset": "pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz",
   "pkgbuildAsset": "pryn-bin.PKGBUILD",
-  "checksumsAsset": "SHA256SUMS"
+  "checksumsAsset": "SHA256SUMS",
+  "pkgbuildUrl": "assets/pryn-bin.PKGBUILD"
 }
