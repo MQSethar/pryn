@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://mqsethar.github.io/pryn/sitemap.xml
+Sitemap: https://pryn.qasimio.me/sitemap.xml

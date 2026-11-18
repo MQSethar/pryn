@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#050608">
+  <meta name="description" content="PRYN documentation: commands, diagnostic results, Wi-Fi, Bluetooth, audio, privacy, compatibility and architecture.">
+  <title>PRYN Documentation</title>
+  <link rel="icon" href="../favicon.png" type="image/png">
+  <link rel="stylesheet" href="../styles.css">
+  <script src="../app.js" defer></script>
+</head>
+<body data-root="..">
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="../index.html" aria-label="PRYN home"><span class="brand-symbol"><img src="../assets/pryn-symbol.png" alt=""></span><span class="brand-name">PRYN</span></a>
+      <button class="mobile-menu" id="mobile-menu" aria-label="Open menu" aria-expanded="false"><span></span><span></span></button>
+      <nav class="main-nav" id="main-nav" aria-label="Main navigation">
+        <a href="../index.html">Overview</a><a href="../install.html">Install</a><a class="current" href="./index.html">Documentation</a><a href="https://github.com/MQSethar/pryn" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </nav>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch theme"><span class="theme-icon" aria-hidden="true">◐</span><span id="theme-label">Light mode</span></button>
+    </div>
+  </header>
+
+  <main class="wrap docs-layout">
+    <aside class="docs-sidebar">
+      <p class="section-kicker">DOCUMENTATION</p>
+      <h1>PRYN, explained.</h1>
+      <p>Start with the commands, then learn what each result means and what PRYN can actually observe.</p>
+      <nav aria-label="Documentation sections">
+        <a href="#quick-start">Quick start</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#results">Understanding results</a>
+        <a href="#wifi">Wi-Fi</a>
+        <a href="#bluetooth">Bluetooth</a>
+        <a href="#audio">Audio</a>
+        <a href="#privacy">Privacy and safety</a>
+        <a href="#compatibility">Compatibility</a>
+        <a href="#architecture">Architecture</a>
+      </nav>
+      <a class="sidebar-install" href="../install.html">Install or update PRYN →</a>
+    </aside>
+
+    <article class="docs-content">
+      <section class="docs-section" id="quick-start">
+        <p class="section-kicker">GET STARTED</p>
+        <h2>Run your first check</h2>
+        <p>Open a terminal and run PRYN as your normal user. It does not need root privileges for its supported checks.</p>
+        <div class="code-box docs-code"><code id="docs-first-run">pryn check</code><button class="copy-button" data-copy="docs-first-run">Copy</button></div>
+        <p>To inspect one area:</p>
+        <div class="command-list">
+          <div><strong>Wi-Fi</strong><code>pryn check wifi</code><button class="copy-button" data-copy="docs-wifi">Copy</button><code class="visually-hidden" id="docs-wifi">pryn check wifi</code></div>
+          <div><strong>Bluetooth</strong><code>pryn check bluetooth</code><button class="copy-button" data-copy="docs-bt">Copy</button><code class="visually-hidden" id="docs-bt">pryn check bluetooth</code></div>
+          <div><strong>Audio</strong><code>pryn check audio</code><button class="copy-button" data-copy="docs-audio">Copy</button><code class="visually-hidden" id="docs-audio">pryn check audio</code></div>
+        </div>
+        <p>For more detail or machine-readable output:</p>
+        <div class="code-box docs-code"><code id="docs-options">pryn check --verbose
+pryn check --format json</code><button class="copy-button" data-copy="docs-options">Copy</button></div>
+      </section>
+
+      <section class="docs-section" id="how-it-works">
+        <p class="section-kicker">THE SHORT VERSION</p>
+        <h2>Observe. Evaluate. Report.</h2>
+        <div class="docs-three">
+          <div><strong>1. Observe</strong><p>PRYN reads Linux interfaces and available service state through system files, D-Bus and audio protocols.</p></div>
+          <div><strong>2. Evaluate</strong><p>Diagnostic rules compare those observations with explicit conditions. Collection and interpretation remain separate.</p></div>
+          <div><strong>3. Report</strong><p>The same report can be displayed as readable terminal text or JSON.</p></div>
+        </div>
+        <p>Missing or contradictory information stays visible. PRYN does not turn missing evidence into a green result.</p>
+      </section>
+
+      <section class="docs-section" id="results">
+        <p class="section-kicker">READ THE REPORT</p>
+        <h2>What the result labels mean</h2>
+        <div class="status-table">
+          <div><span class="status-chip pass">PASS</span><p>The check completed and its stated condition was observed.</p></div>
+          <div><span class="status-chip warning">WARNING</span><p>A relevant condition was observed, but it does not prove a root cause.</p></div>
+          <div><span class="status-chip problem">PROBLEM</span><p>The available evidence supports a specific failure condition.</p></div>
+          <div><span class="status-chip unknown">UNKNOWN</span><p>Evidence was unavailable, inaccessible or not strong enough to decide.</p></div>
+          <div><span class="status-chip neutral">NOT APPLICABLE</span><p>The check does not apply to this machine or provider.</p></div>
+          <div><span class="status-chip neutral">NOT IMPLEMENTED</span><p>The check is not implemented in this version. A subsystem can therefore be partial.</p></div>
+        </div>
+        <h3>Exit codes</h3>
+        <ul class="readable-list">
+          <li><strong>0</strong> — the report contains no warning, problem, unknown, partial or unimplemented result.</li>
+          <li><strong>1</strong> — the report was created, but contains one of those results. This is a diagnostic outcome, not necessarily a crash.</li>
+          <li><strong>2</strong> — PRYN could not parse or execute the command, or could not write the report.</li>
+        </ul>
+        <p><a class="source-link" href="https://github.com/MQSethar/pryn/blob/main/docs/results.md">Full result definitions and finding codes on GitHub ↗</a></p>
+      </section>
+
+      <section class="docs-section" id="wifi">
+        <p class="section-kicker">01 / WI-FI</p>
+        <h2>What PRYN checks about Wi-Fi</h2>
+        <p>PRYN inspects discovered wireless interfaces, their drivers and radio state. When available, it reads NetworkManager or standalone iwd state and checks local IP addresses, default routes and configured DNS nameservers.</p>
+        <div class="info-callout"><strong>Important:</strong> a connected Wi-Fi interface does not prove that the internet works. PRYN does not send ping, DNS or HTTP probes. NetworkManager's connectivity value may be old and system-wide.</div>
+      </section>
+
+      <section class="docs-section" id="bluetooth">
+        <p class="section-kicker">02 / BLUETOOTH</p>
+        <h2>What PRYN checks about Bluetooth</h2>
+        <p>PRYN inspects controller presence, radio blocks, BlueZ availability, adapter power, paired devices and reported connection state.</p>
+        <div class="info-callout"><strong>Important:</strong> a paired device is not necessarily connected. PRYN does not start discovery, pair devices or connect/disconnect them.</div>
+      </section>
+
+      <section class="docs-section" id="audio">
+        <p class="section-kicker">03 / AUDIO</p>
+        <h2>What PRYN checks about audio</h2>
+        <p>PRYN inspects ALSA cards and the current user's PulseAudio-compatible audio service. If <code>pw-dump</code> is available, it can also inspect the native PipeWire graph.</p>
+        <p>It can report default output and input devices, mute and volume levels, channels, sample formats, ports and exposed card profiles.</p>
+        <div class="info-callout"><strong>Important:</strong> PRYN does not play test sounds or record microphone audio. A configured output does not prove sound is physically audible; a capture source does not prove that a microphone records intelligible audio. A suspended endpoint is normally idle, not broken.</div>
+        <p><a class="source-link" href="https://github.com/MQSethar/pryn/blob/main/docs/audio-diagnostics.md">Full audio-provider details ↗</a></p>
+      </section>
+
+      <section class="docs-section" id="privacy">
+        <p class="section-kicker">PRIVACY AND SAFETY</p>
+        <h2>What PRYN does not do</h2>
+        <ul class="readable-list">
+          <li>It does not change network, Bluetooth or audio settings.</li>
+          <li>It does not restart services, pair devices, start Bluetooth discovery or perform repairs.</li>
+          <li>It does not collect telemetry or make PRYN-initiated network requests.</li>
+          <li>It does not collect Wi-Fi passwords, SSIDs, MAC addresses, journal contents, application stream names or microphone recordings.</li>
+        </ul>
+        <p>Reports can include local IP addresses, default gateways and DNS server addresses. Review JSON output before sharing it publicly.</p>
+        <p><a class="source-link" href="https://github.com/MQSethar/pryn/blob/main/SECURITY.md">Security policy ↗</a> · <a class="source-link" href="https://github.com/MQSethar/pryn/blob/main/docs/results.md">Data-minimization details ↗</a></p>
+      </section>
+
+      <section class="docs-section" id="compatibility">
+        <p class="section-kicker">COMPATIBILITY</p>
+        <h2>What has actually been tested</h2>
+        <p>The current prebuilt release targets Linux x86_64 / amd64. ARM64 is not supported yet.</p>
+        <div class="compat-table">
+          <div><strong>Real machines</strong><span>Arch Linux · Ubuntu 26.04 · Kali Rolling</span></div>
+          <div><strong>CI containers</strong><span>Ubuntu 26.04 · Debian 13 · Kali Rolling · Fedora latest · Alpine latest</span></div>
+          <div><strong>Not yet individually validated</strong><span>openSUSE · physical Alpine · physical Fedora · physical Debian 13 · Linux Mint · Pop!_OS</span></div>
+        </div>
+        <p>Container tests verify installation and process startup. They do not prove physical Wi-Fi, Bluetooth, audio or internet behavior on every distribution.</p>
+        <p><a class="source-link" href="https://github.com/MQSethar/pryn/blob/main/docs/support-matrix.md">Full support matrix ↗</a></p>
+      </section>
+
+      <section class="docs-section" id="architecture">
+        <p class="section-kicker">FOR DEVELOPERS</p>
+        <h2>How the code is organised</h2>
+        <p>PRYN is a modular monolith: one executable, one process and shared diagnostic models. The CLI coordinates the app, platform collectors return typed observations, diagnostic rules evaluate those observations, and report renderers produce terminal text or JSON.</p>
+        <p>Collectors do not decide whether a state is a fault. Diagnostic rules do not perform system I/O. This separation keeps data collection, interpretation and presentation independently testable.</p>
+        <p><a class="source-link" href="https://github.com/MQSethar/pryn/blob/main/docs/architecture.md">Full architecture document ↗</a> · <a class="source-link" href="https://github.com/MQSethar/pryn/blob/main/CONTRIBUTING.md">Contribution guide ↗</a></p>
+      </section>
+
+      <section class="docs-end">
+        <h2>Need to install or update?</h2>
+        <p>Choose your distribution. The install page includes install, update and uninstall instructions, including the Cargo route.</p>
+        <a class="button button-primary" href="../install.html">Go to installation →</a>
+      </section>
+    </article>
+  </main>
+
+  <footer class="site-footer"><div class="footer-inner wrap"><a class="brand" href="../index.html"><span class="brand-symbol"><img src="../assets/pryn-symbol.png" alt=""></span><span class="brand-name">PRYN</span></a><span>Documentation for PRYN v0.1.1</span><div class="footer-links"><a href="../index.html">Overview</a><a href="../install.html">Install</a><a href="https://github.com/MQSethar/pryn">GitHub</a></div></div></footer>
+</body>
+</html>

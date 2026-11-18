@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#050608">
+  <meta name="description" content="Install, update or uninstall PRYN on Debian, Ubuntu, Kali, Fedora, openSUSE, Arch, Alpine or with Cargo.">
+  <title>Install PRYN — Install, update and remove</title>
+  <link rel="icon" href="./favicon.png" type="image/png">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body data-root=".">
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="./index.html" aria-label="PRYN home"><span class="brand-symbol"><img src="./assets/pryn-symbol.png" alt=""></span><span class="brand-name">PRYN</span></a>
+      <button class="mobile-menu" id="mobile-menu" aria-label="Open menu" aria-expanded="false"><span></span><span></span></button>
+      <nav class="main-nav" id="main-nav" aria-label="Main navigation">
+        <a href="./index.html">Overview</a><a class="current" href="./install.html">Install</a><a href="./docs/index.html">Documentation</a><a href="https://github.com/MQSethar/pryn" target="_blank" rel="noreferrer">GitHub ↗</a>
+      </nav>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch theme"><span class="theme-icon" aria-hidden="true">◐</span><span id="theme-label">Light mode</span></button>
+    </div>
+  </header>
+
+  <main class="wrap page-main">
+    <section class="page-intro">
+      <p class="section-kicker">INSTALLATION</p>
+      <h1>Install PRYN.<br><span>Keep it up to date. Remove it cleanly.</span></h1>
+      <p class="page-lead">Choose your Linux family and select what you need to do. Download the file once; the command below only installs or updates that file.</p>
+      <div class="requirement-banner"><strong>x86_64 only</strong><span>PRYN's prebuilt v0.1.1 packages are for 64-bit Intel/AMD Linux. Check with <code>uname -m</code>. ARM64 is not available yet.</span></div>
+    </section>
+
+    <section class="installer-section" aria-labelledby="choose-linux">
+      <div class="section-heading-row"><div><h2 id="choose-linux">Choose your Linux</h2><p>Pick the system you use.</p></div><span class="version-badge">Latest release <strong id="installer-version">0.1.1</strong></span></div>
+
+      <div class="platform-tabs" role="tablist" aria-label="Linux distribution">
+        <button class="platform-tab active" role="tab" aria-selected="true" aria-controls="platform-debian" data-platform="debian">Debian / Ubuntu</button>
+        <button class="platform-tab" role="tab" aria-selected="false" aria-controls="platform-fedora" data-platform="fedora">Fedora</button>
+        <button class="platform-tab" role="tab" aria-selected="false" aria-controls="platform-opensuse" data-platform="opensuse">openSUSE</button>
+        <button class="platform-tab" role="tab" aria-selected="false" aria-controls="platform-arch" data-platform="arch">Arch</button>
+        <button class="platform-tab" role="tab" aria-selected="false" aria-controls="platform-other" data-platform="other">Alpine / Other</button>
+      </div>
+
+      <article class="platform-panel active" id="platform-debian" role="tabpanel" data-platform-panel="debian">
+        <div class="platform-heading"><div><span class="package-type">DEB PACKAGE</span><h3>Debian, Ubuntu, Kali and derivatives</h3><p>Use this package on Debian-based systems. Linux Mint and Pop!_OS are expected to be compatible, but have not been separately tested.</p></div><span class="tested-label">Container-tested</span></div>
+        <div class="mode-tabs" role="tablist" aria-label="Debian package action">
+          <button class="mode-tab active" data-mode-button="install" aria-selected="true">Install</button><button class="mode-tab" data-mode-button="update" aria-selected="false">Update</button><button class="mode-tab" data-mode-button="remove" aria-selected="false">Remove</button>
+        </div>
+        <div class="mode-panel active" data-mode-panel="install">
+          <div class="action-grid">
+            <div class="action-block"><span class="action-number">1</span><div><h4>Download the package</h4><p>Save this file in your Downloads folder.</p></div><div class="download-box"><code data-file="deb">pryn_0.1.1_amd64.deb</code><a class="button button-small button-primary" data-asset="deb" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn_0.1.1_amd64.deb">Download .deb ↓</a></div></div>
+            <div class="action-block"><span class="action-number">2</span><div><h4>Install it</h4><p>This uses the file you just downloaded.</p></div><div class="code-box"><code id="debian-install">cd ~/Downloads && sudo apt install ./pryn_0.1.1_amd64.deb</code><button class="copy-button" data-copy="debian-install">Copy</button></div></div>
+          </div>
+          <p class="action-note">CI installation tests passed on Ubuntu 26.04, Debian 13 and Kali Rolling.</p>
+        </div>
+        <div class="mode-panel" data-mode-panel="update" hidden>
+          <div class="action-block"><h4>Download the newer .deb</h4><p>Use the button below to download the latest release. Then run the same APT command to install it over the older version.</p><div class="download-box"><code data-file="deb">pryn_0.1.1_amd64.deb</code><a class="button button-small button-primary" data-asset="deb" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn_0.1.1_amd64.deb">Download latest .deb ↓</a></div><div class="code-box"><code id="debian-update">cd ~/Downloads && sudo apt install ./pryn_0.1.1_amd64.deb</code><button class="copy-button" data-copy="debian-update">Copy</button></div></div>
+          <p class="action-note">APT replaces the installed PRYN package when the downloaded package has a newer version. Direct downloads do not update automatically.</p>
+        </div>
+        <div class="mode-panel" data-mode-panel="remove" hidden>
+          <div class="action-block"><h4>Remove PRYN</h4><p>This removes PRYN but keeps its configuration files, if any.</p><div class="code-box"><code id="debian-remove">sudo apt remove pryn</code><button class="copy-button" data-copy="debian-remove">Copy</button></div></div>
+        </div>
+      </article>
+
+      <article class="platform-panel" id="platform-fedora" role="tabpanel" data-platform-panel="fedora" hidden>
+        <div class="platform-heading"><div><span class="package-type">RPM PACKAGE</span><h3>Fedora and compatible RPM systems</h3><p>Fedora is the tested RPM target. RHEL, Rocky and AlmaLinux are intended targets, not individually tested yet.</p></div><span class="tested-label">Fedora container-tested</span></div>
+        <div class="mode-tabs" role="tablist" aria-label="Fedora package action">
+          <button class="mode-tab active" data-mode-button="install" aria-selected="true">Install</button><button class="mode-tab" data-mode-button="update" aria-selected="false">Update</button><button class="mode-tab" data-mode-button="remove" aria-selected="false">Remove</button>
+        </div>
+        <div class="mode-panel active" data-mode-panel="install">
+          <div class="action-grid">
+            <div class="action-block"><span class="action-number">1</span><div><h4>Download the package</h4><p>Save this file in Downloads.</p></div><div class="download-box"><code data-file="rpm">pryn-0.1.1-1.x86_64.rpm</code><a class="button button-small button-primary" data-asset="rpm" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-0.1.1-1.x86_64.rpm">Download .rpm ↓</a></div></div>
+            <div class="action-block"><span class="action-number">2</span><div><h4>Install it</h4><p>The current RPM is unsigned, so this command skips signature verification for this file.</p></div><div class="code-box"><code id="fedora-install">cd ~/Downloads && sudo dnf install --nogpgcheck ./pryn-0.1.1-1.x86_64.rpm</code><button class="copy-button" data-copy="fedora-install">Copy</button></div></div>
+          </div>
+          <p class="action-note warning-note">The RPM is unsigned. Only install it if you trust the GitHub release and have checked its published SHA-256 checksum.</p>
+        </div>
+        <div class="mode-panel" data-mode-panel="update" hidden>
+          <div class="action-block"><h4>Download the newer .rpm</h4><p>Download the latest package, then run this command. DNF installs the local RPM and upgrades the installed package when the downloaded version is newer.</p><div class="download-box"><code data-file="rpm">pryn-0.1.1-1.x86_64.rpm</code><a class="button button-small button-primary" data-asset="rpm" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-0.1.1-1.x86_64.rpm">Download latest .rpm ↓</a></div><div class="code-box"><code id="fedora-update">cd ~/Downloads && sudo dnf install --nogpgcheck ./pryn-0.1.1-1.x86_64.rpm</code><button class="copy-button" data-copy="fedora-update">Copy</button></div></div>
+        </div>
+        <div class="mode-panel" data-mode-panel="remove" hidden><div class="action-block"><h4>Remove PRYN</h4><p>DNF removes the installed package.</p><div class="code-box"><code id="fedora-remove">sudo dnf remove pryn</code><button class="copy-button" data-copy="fedora-remove">Copy</button></div></div></div>
+      </article>
+
+      <article class="platform-panel" id="platform-opensuse" role="tabpanel" data-platform-panel="opensuse" hidden>
+        <div class="platform-heading"><div><span class="package-type">RPM PACKAGE</span><h3>openSUSE</h3><p>Uses the same x86_64 RPM. openSUSE is an intended target but is not in the current CI smoke-test matrix.</p></div><span class="status-label">Not yet tested</span></div>
+        <div class="mode-tabs" role="tablist" aria-label="openSUSE package action">
+          <button class="mode-tab active" data-mode-button="install" aria-selected="true">Install</button><button class="mode-tab" data-mode-button="update" aria-selected="false">Update</button><button class="mode-tab" data-mode-button="remove" aria-selected="false">Remove</button>
+        </div>
+        <div class="mode-panel active" data-mode-panel="install"><div class="action-block"><h4>Download and install</h4><p>Download the RPM, then install the local file. The package is unsigned.</p><div class="download-box"><code data-file="rpm">pryn-0.1.1-1.x86_64.rpm</code><a class="button button-small button-primary" data-asset="rpm" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-0.1.1-1.x86_64.rpm">Download .rpm ↓</a></div><div class="code-box"><code id="opensuse-install">cd ~/Downloads && sudo zypper install --allow-unsigned-rpm ./pryn-0.1.1-1.x86_64.rpm</code><button class="copy-button" data-copy="opensuse-install">Copy</button></div></div></div>
+        <div class="mode-panel" data-mode-panel="update" hidden><div class="action-block"><h4>Download the newer RPM</h4><p>Download the latest RPM, then install it over the existing version using Zypper.</p><div class="download-box"><code data-file="rpm">pryn-0.1.1-1.x86_64.rpm</code><a class="button button-small button-primary" data-asset="rpm" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-0.1.1-1.x86_64.rpm">Download latest .rpm ↓</a></div><div class="code-box"><code id="opensuse-update">cd ~/Downloads && sudo zypper install --allow-unsigned-rpm ./pryn-0.1.1-1.x86_64.rpm</code><button class="copy-button" data-copy="opensuse-update">Copy</button></div></div></div>
+        <div class="mode-panel" data-mode-panel="remove" hidden><div class="action-block"><h4>Remove PRYN</h4><div class="code-box"><code id="opensuse-remove">sudo zypper remove pryn</code><button class="copy-button" data-copy="opensuse-remove">Copy</button></div></div></div>
+        <p class="action-note warning-note">The RPM is unsigned. Zypper's <code>--allow-unsigned-rpm</code> option allows this local package. Review the release checksum before installing.</p>
+      </article>
+
+      <article class="platform-panel" id="platform-arch" role="tabpanel" data-platform-panel="arch" hidden>
+        <div class="platform-heading"><div><span class="package-type">ARCH PACKAGE</span><h3>Arch Linux</h3><p>The AUR package is not published yet. For now, install the prebuilt binary with the maintained PRYN PKGBUILD. No Rust compilation is involved.</p></div><span class="status-label" id="arch-status">AUR pending</span></div>
+        <div id="arch-manual">
+          <div class="mode-tabs" role="tablist" aria-label="Arch package action">
+            <button class="mode-tab active" data-mode-button="install" aria-selected="true">Install</button><button class="mode-tab" data-mode-button="update" aria-selected="false">Update</button><button class="mode-tab" data-mode-button="remove" aria-selected="false">Remove</button>
+          </div>
+          <div class="mode-panel active" data-mode-panel="install">
+            <div class="action-block"><h4>Download the package recipe</h4><p>Save the PKGBUILD file in Downloads.</p><div class="download-box"><code data-file="pkgbuild">pryn-bin.PKGBUILD</code><a class="button button-small button-primary" data-asset="pkgbuild" href="./assets/pryn-bin.PKGBUILD" download="pryn-bin.PKGBUILD">Download PKGBUILD ↓</a></div><h4 class="second-heading">Build and install</h4><p>Arch's standard build tools are needed. PRYN itself is not compiled from source.</p><div class="code-box code-box-tall"><code id="arch-install">sudo pacman -S --needed base-devel
+mkdir -p ~/build/pryn-bin
+cp ~/Downloads/pryn-bin.PKGBUILD ~/build/pryn-bin/PKGBUILD
+cd ~/build/pryn-bin
+makepkg -si</code><button class="copy-button" data-copy="arch-install">Copy</button></div></div>
+          </div>
+          <div class="mode-panel" data-mode-panel="update" hidden><div class="action-block"><h4>Download the new PKGBUILD</h4><p>Download the latest PKGBUILD, replace the old file in <code>~/build/pryn-bin</code>, then build and install the update.</p><div class="download-box"><code data-file="pkgbuild">pryn-bin.PKGBUILD</code><a class="button button-small button-primary" data-asset="pkgbuild" href="./assets/pryn-bin.PKGBUILD" download="pryn-bin.PKGBUILD">Download latest PKGBUILD ↓</a></div><div class="code-box code-box-tall"><code id="arch-update">cp -f ~/Downloads/pryn-bin.PKGBUILD ~/build/pryn-bin/PKGBUILD
+cd ~/build/pryn-bin
+makepkg -si</code><button class="copy-button" data-copy="arch-update">Copy</button></div></div></div>
+          <div class="mode-panel" data-mode-panel="remove" hidden><div class="action-block"><h4>Remove PRYN</h4><p>Pacman removes the locally installed package.</p><div class="code-box"><code id="arch-remove">sudo pacman -Rns pryn-bin</code><button class="copy-button" data-copy="arch-remove">Copy</button></div></div></div>
+          <p class="action-note">The recipe verifies the GitHub release archive with a pinned SHA-256 checksum before packaging it.</p>
+        </div>
+        <div id="arch-aur" hidden>
+          <div class="mode-tabs" role="tablist" aria-label="Arch AUR action"><button class="mode-tab active" data-mode-button="install" aria-selected="true">Install</button><button class="mode-tab" data-mode-button="update" aria-selected="false">Update</button><button class="mode-tab" data-mode-button="remove" aria-selected="false">Remove</button></div>
+          <div class="mode-panel active" data-mode-panel="install"><div class="action-block"><h4>Install from AUR</h4><div class="code-box"><code id="aur-install">yay -S pryn-bin</code><button class="copy-button" data-copy="aur-install">Copy</button></div><a id="aur-link" class="text-link" href="https://aur.archlinux.org/packages/pryn-bin">View pryn-bin on AUR ↗</a></div></div>
+          <div class="mode-panel" data-mode-panel="update" hidden><div class="action-block"><h4>Update PRYN</h4><div class="code-box"><code id="aur-update">yay -Syu pryn-bin</code><button class="copy-button" data-copy="aur-update">Copy</button></div></div></div>
+          <div class="mode-panel" data-mode-panel="remove" hidden><div class="action-block"><h4>Remove PRYN</h4><div class="code-box"><code id="aur-remove">yay -Rns pryn-bin</code><button class="copy-button" data-copy="aur-remove">Copy</button></div></div></div>
+        </div>
+      </article>
+
+      <article class="platform-panel" id="platform-other" role="tabpanel" data-platform-panel="other" hidden>
+        <div class="platform-heading"><div><span class="package-type">STATIC LINUX ARCHIVE</span><h3>Alpine and other compatible x86_64 Linux</h3><p>Use the portable static-musl executable when a native package is not available.</p></div><span class="tested-label">Alpine container-tested</span></div>
+        <div class="mode-tabs" role="tablist" aria-label="Static archive action">
+          <button class="mode-tab active" data-mode-button="install" aria-selected="true">Install</button><button class="mode-tab" data-mode-button="update" aria-selected="false">Update</button><button class="mode-tab" data-mode-button="remove" aria-selected="false">Remove</button>
+        </div>
+        <div class="mode-panel active" data-mode-panel="install">
+          <div class="action-block"><h4>Download the archive</h4><p>Save this file in Downloads.</p><div class="download-box"><code data-file="archive">pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz</code><a class="button button-small button-primary" data-asset="archive" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz">Download archive ↓</a></div><h4 class="second-heading">Extract and install</h4><div class="code-box code-box-tall"><code id="other-install">mkdir -p ~/.local/bin
+tar -xzf ~/Downloads/pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz -C /tmp
+install -Dm755 /tmp/pryn-v0.1.1/pryn ~/.local/bin/pryn</code><button class="copy-button" data-copy="other-install">Copy</button></div></div>
+        </div>
+        <div class="mode-panel" data-mode-panel="update" hidden><div class="action-block"><h4>Download the newer archive</h4><p>The command replaces your existing user-level executable with the new one.</p><div class="download-box"><code data-file="archive">pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz</code><a class="button button-small button-primary" data-asset="archive" href="https://github.com/MQSethar/pryn/releases/download/v0.1.1/pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz">Download latest archive ↓</a></div><div class="code-box code-box-tall"><code id="other-update">tar -xzf ~/Downloads/pryn-v0.1.1-x86_64-unknown-linux-musl.tar.gz -C /tmp
+install -Dm755 /tmp/pryn-v0.1.1/pryn ~/.local/bin/pryn</code><button class="copy-button" data-copy="other-update">Copy</button></div></div></div>
+        <div class="mode-panel" data-mode-panel="remove" hidden><div class="action-block"><h4>Remove PRYN</h4><p>This removes the executable installed in your home directory.</p><div class="code-box"><code id="other-remove">rm -f ~/.local/bin/pryn</code><button class="copy-button" data-copy="other-remove">Copy</button></div></div></div>
+        <p class="action-note">The static archive passed the Alpine container startup test. Physical Alpine hardware and service integration have not been validated.</p>
+      </article>
+    </section>
+
+    <section class="cargo-section" id="cargo">
+      <div class="cargo-copy"><p class="section-kicker">ALTERNATIVE METHOD</p><h2>Install through Cargo</h2><p>Use this if you already work with Rust. Cargo downloads the crate and compiles PRYN on your machine. This is not the prebuilt-binary route.</p><span class="status-label">Requires Rust + Cargo</span></div>
+      <div class="cargo-actions">
+        <div class="cargo-action"><div><h3>Install</h3><p>Install the published crate.</p></div><div class="code-box"><code id="cargo-install">cargo install pryn --locked</code><button class="copy-button" data-copy="cargo-install">Copy</button></div></div>
+        <div class="cargo-action"><div><h3>Update</h3><p>Replace the installed version with the latest crates.io release.</p></div><div class="code-box"><code id="cargo-update">cargo install pryn --locked --force</code><button class="copy-button" data-copy="cargo-update">Copy</button></div></div>
+        <div class="cargo-action"><div><h3>Remove</h3><p>Uninstall the Cargo-managed executable.</p></div><div class="code-box"><code id="cargo-remove">cargo uninstall pryn</code><button class="copy-button" data-copy="cargo-remove">Copy</button></div></div>
+      </div>
+    </section>
+
+    <section class="after-install">
+      <div class="after-copy"><h2>Check that it works</h2><p>After installation, run PRYN as your normal user. These checks do not need <code>sudo</code>.</p></div>
+      <div class="code-box after-code"><code id="first-run">pryn --version && pryn check</code><button class="copy-button" data-copy="first-run">Copy</button></div>
+    </section>
+
+    <section class="small-print">
+      <h2>Before you go</h2>
+      <p><strong>Choose one installation method and use the matching update and remove instructions.</strong> For example, remove a Cargo install with <code>cargo uninstall</code>, not with APT or pacman.</p>
+      <p>The current RPM is unsigned. The release includes SHA-256 checksums, but these are not a cryptographic publisher signature. PRYN does not install or enable NetworkManager, iwd, BlueZ, PipeWire or other host services; those remain optional.</p>
+      <p><a href="./docs/index.html">Read the documentation →</a> · <a href="https://github.com/MQSethar/pryn/releases/latest">All release files ↗</a></p>
+    </section>
+  </main>
+
+  <footer class="site-footer"><div class="footer-inner wrap"><a class="brand" href="./index.html"><span class="brand-symbol"><img src="./assets/pryn-symbol.png" alt=""></span><span class="brand-name">PRYN</span></a><span>Read-only Linux diagnostics</span><div class="footer-links"><a href="./index.html">Overview</a><a href="./docs/index.html">Docs</a><a href="https://github.com/MQSethar/pryn">GitHub</a></div></div></footer>
+</body>
+</html>
